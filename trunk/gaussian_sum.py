@@ -3,34 +3,32 @@
 #===============================================================================#
 #   DESCRIPTION:  
 # 
-#       OPTIONS:  ---
-#  REQUIREMENTS:  ---
+#  REQUIREMENTS:  python
 #         NOTES:  ---
 #        AUTHOR:  ybyygu 
 #       LICENCE:  GPL version 2 or upper
 #       VERSION:  0.1
 #       CREATED:  2006-8-30 
-#      REVISION:  2006-8-30
+#      REVISION:  2006-8-31
 #===============================================================================#
 import sys
 from sys import stdin, stderr
-from os.path import expanduser, join
+from os.path import expanduser, join, exists, isdir, isfile
 import glob
 
 DefaultWD = expanduser("~/gjf/work")
-DefaultLogs = glob.glob(join(DefaultWD, "*.log"))
+DefaultLogfiles = glob.glob(join(DefaultWD, "*.log"))
 
 def SummaryGassianlogFromFiles(gaussian_log_files):
     for log in gaussian_log_files:
         try:
             flog = open(log, 'r')
         except IOError:
-            print >>stderr, "Can't open %s to read!" %(gaussian_log_file)
+            print >>stderr, "Can't open %s to read!" %(log)
             continue
 
-        code = walklog(flog)
+        walklog(flog)
         flog.close()
-    return code
 
 def SummaryGaussianlogFromStdin():
     return walklog(sys.stdin)
@@ -101,6 +99,16 @@ def walklog(flog):
 
         line = flog.readline()
 
+def usage(program):
+    print 'Usage:'
+    print ' %s' % program
+    print '   summary ~/gjf/work/*.log'
+    print ' %s dir' % program
+    print '   summary dir/*.log and dir/*.out'
+    print ' %s -h | --help' % program
+    print '   show this help screen.'
+
+
 #==========================================================================
 # MAIN PROGRAM
 #==========================================================================
@@ -109,14 +117,31 @@ def main (argv=None):
 
     if argv is None:  argv = sys.argv
     
-# try to read from default gaussian output directory
-    if len(argv) == 1:
-        SummaryGassianlogFromFiles(DefaultLogs)
+    try:
+        opts, args = getopt.gnu_getopt(argv[1:], 'h', ['help'])
+    except:
+        print >>stderr, "Can't parse argument options."
+        sys.exit(1)
+    
+    for o, a in opts:
+        if o in ('-h', '--help'):
+            usage(sys.argv[0])
+            sys.exit(0)
+
+    
+    if len(args)>0:
 # try to read from stdin
-    elif argv[1] == '-':
-        SummaryGaussianlogFromStdin()
+        if args[0] == '-':
+            SummaryGaussianlogFromStdin()
+        elif isdir(args[0]):
+           GaussianLogfiles = glob.glob(join(args[0], "*.log")) + glob.glob(join(args[0], "*.out"))
+        else:
+            GaussianLogfiles = args
     else:
-        SummaryGassianlogFromFiles(argv[1:])
+# try to read from default gaussian output directory if no argv specified
+        GaussianLogfiles = DefaultLogfiles
+    SummaryGassianlogFromFiles(GaussianLogfiles)
+
 if (__name__ == "__main__"):
     result = main()
     # Comment the next line to use the debugger
