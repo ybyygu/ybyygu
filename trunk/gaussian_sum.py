@@ -9,8 +9,8 @@
 #        AUTHOR:  ybyygu 
 #       LICENCE:  GPL version 2 or upper
 #       VERSION:  0.1
-#       CREATED:   
-#      REVISION:  ---
+#       CREATED:  2006-8-30 
+#      REVISION:  2006-8-30
 #===============================================================================#
 import sys
 from sys import stdin, stderr
