@@ -26,7 +26,7 @@ def SummaryGassianlogFromFiles(gaussian_log_files):
         except IOError:
             print >>stderr, "Can't open %s to read!" %(log)
             continue
-
+        print "%s:" % log
         walklog(flog)
         flog.close()
 
@@ -37,9 +37,7 @@ def walklog(flog):
     import re
     
     LineLength = 72
-
     line = flog.readline()
-    
     freq_count = 0
     while line:
         if re.compile(r'^ %').match(line):
@@ -128,19 +126,21 @@ def main (argv=None):
             usage(sys.argv[0])
             sys.exit(0)
 
-    
-    if len(args)>0:
+# try to read from default gaussian output directory if no argv specified
+    if len(argv)==1:
+        SummaryGassianlogFromFiles(DefaultLogfiles)
+        return 0
 # try to read from stdin
-        if args[0] == '-':
-            SummaryGaussianlogFromStdin()
-        elif isdir(args[0]):
-           GaussianLogfiles = glob.glob(join(args[0], "*.log")) + glob.glob(join(args[0], "*.out"))
+    elif argv[1] == '-':
+        SummaryGaussianlogFromStdin()
+        return 0
+    elif args:
+        if isdir(args[0]):
+            GaussianLogfiles = glob.glob(join(args[0], "*.log")) + glob.glob(join(args[0], "*.out"))
         else:
             GaussianLogfiles = args
-    else:
-# try to read from default gaussian output directory if no argv specified
-        GaussianLogfiles = DefaultLogfiles
-    SummaryGassianlogFromFiles(GaussianLogfiles)
+        SummaryGassianlogFromFiles(GaussianLogfiles)
+        return 0
 
 if (__name__ == "__main__"):
     result = main()
