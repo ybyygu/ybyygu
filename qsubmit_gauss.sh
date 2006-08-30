@@ -1,6 +1,6 @@
 #!/bin/bash
 # Written by ybyygu at 2004
-# Last updated at 2006 8/21
+# Last updated at 2006 8/30
 
 #------------------------------------------------------------------------
 GAUSSIAN_VAR=$HOME/gaussian/regvar-g03
@@ -34,7 +34,7 @@ submit()
     # submit gaussian jobs
     local gauss_input
     for gauss_input in $files; do
-
+        start_time=`data +%c`
         # convert DOS newlines to unix format, and submit it
         (
          [[ -d $WORK_DIR ]] || mkdir -p $WORK_DIR
@@ -56,7 +56,8 @@ submit()
             echo "  (II) informational,  (WW) warning   "
             echo "--------------------------------------"
             echo "(WW) Gaussian did not terminate normally "
-            echo "(II) Date: `date +%c` "
+            echo "(II) Date: Start at $start_time"
+            echo "(II) Date: End at `date +%c`"
             echo "(II) From: $QUEUE_DIR/$gauss_input"
             echo "(II) To  : $arch_dir/"
             echo
