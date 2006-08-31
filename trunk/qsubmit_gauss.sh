@@ -34,14 +34,14 @@ submit()
     # submit gaussian jobs
     local gauss_input
     for gauss_input in $files; do
-        start_time=`data +%c`
+        local start_time=$(date +%c)
         # convert DOS newlines to unix format, and submit it
         (
-         [[ -d $WORK_DIR ]] || mkdir -p $WORK_DIR
-         cd $WORK_DIR
-         mv $QUEUE_DIR/$gauss_input $WORK_DIR/
-         cat $gauss_input|tr -d '\r' \
-         |$GAUSSIAN_CMD &> ${gauss_input/%.*/.log}
+          [[ -d $WORK_DIR ]] || mkdir -p $WORK_DIR
+          cd $WORK_DIR
+          mv $QUEUE_DIR/$gauss_input $WORK_DIR/
+          cat $gauss_input|tr -d '\r' \
+          |$GAUSSIAN_CMD &> ${gauss_input/%.*/.log}
         )
         
         # wait for a long time
@@ -69,6 +69,7 @@ submit()
             echo "--------------------------------------"
             echo "  (II) informational,  (WW) warning   "
             echo "--------------------------------------"
+            echo "(II) Date: Start at $start_time"
             echo "(II) Date: `date +%c` "
             echo "(II) From: $QUEUE_DIR/$gauss_input"
             echo "(II) To  : $arch_dir/"
