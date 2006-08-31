@@ -1,6 +1,6 @@
 #!/bin/bash
 # Written by ybyygu at 2004
-# Last updated at 2006 8/30
+# Last updated at 2006 8/31
 
 #------------------------------------------------------------------------
 GAUSSIAN_VAR=$HOME/gaussian/regvar-g03
@@ -56,8 +56,8 @@ submit()
             echo "  (II) informational,  (WW) warning   "
             echo "--------------------------------------"
             echo "(WW) Gaussian did not terminate normally "
-            echo "(II) Date: Start at $start_time"
-            echo "(II) Date: End at `date +%c`"
+            echo "(II) Start at $start_time"
+            echo "(II) End at `date +%c`"
             echo "(II) From: $QUEUE_DIR/$gauss_input"
             echo "(II) To  : $arch_dir/"
             echo
@@ -69,8 +69,8 @@ submit()
             echo "--------------------------------------"
             echo "  (II) informational,  (WW) warning   "
             echo "--------------------------------------"
-            echo "(II) Date: Start at $start_time"
-            echo "(II) Date: `date +%c` "
+            echo "(II) Start at $start_time"
+            echo "(II) End at`date +%c` "
             echo "(II) From: $QUEUE_DIR/$gauss_input"
             echo "(II) To  : $arch_dir/"
             echo
