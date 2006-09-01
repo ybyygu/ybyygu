@@ -4,21 +4,19 @@
 
 import re
 import getopt
-from math import sin, cos, pi
 import sys
 
 # default parameters
 INDEX = "1"
 SCALE = 0.5
-FRAMES = 10
 OUTPUTFILENAME = ''
 
 def usage(progname):
-    print 'Usage:', progname, ' [-i index] [-s scale] [-f frames] gauss_logfile'
+    print 'Usage:', progname, ' [-i index] [-s scale] [-o output.gjf] gauss_logfile'
     print '    gauss_logfile: The gaussian log file which will be parsed'
     print '    -i index: Which freq will be used? The default is the first one.'
     print '    -s scale: Use this value to scale the displacement. The default value is %s.' % SCALE
-    print '    -f frames: The total frames of output. The default value is %s.' % FRAMES
+    print '    -o output.gjf: Use this option to specify an output file.'
 
 ATOMS = ('H ', 'He',
           'Li', 'Be', 'B ', 'C ', 'N ', 'O ', 'F ', 'Ne',
@@ -31,7 +29,7 @@ PROGNAME = sys.argv[0]
 # parse command line options
 if len(sys.argv)>1:
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hi:s:f:o:", ['help', 'index=', 'scale=', 'frames=', 'output='])
+        opts, args = getopt.getopt(sys.argv[1:], "hi:s:o:", ['help', 'index=', 'scale=', 'output='])
     except :
         print >> sys.stderr, "Can't parse command line option."
         sys.exit(2)
@@ -166,23 +164,24 @@ INPUT.close()
 
 ## output everything
 if OUTPUTFILENAME == '':
-    OUTPUTFILENAME = "%s-freq_index_%s.xyz" %(GAUSSLOGFILE, INDEX)
+    OUTPUTFILENAME = "%s-index_%s-scale_%s.gjf" %(GAUSSLOGFILE, INDEX, SCALE)
 try:
     output = open(OUTPUTFILENAME, 'w')
 except :
     print >> sys.stderr, "Can not open file to write."
     sys.exit(2)
 
-for f in range(FRAMES):
-    output.writelines("%d\n" %(len(atoms)))
-    output.writelines("frame %02d of %s; index: %s, scale: %s\n" % (f, GAUSSLOGFILE, INDEX, SCALE))
+output.writelines("#Put Keywords Here, check Charge and Multiplicity\n")
+output.writelines("\n")
+output.writelines("%s; index: %s; scale: %s\n" % (GAUSSLOGFILE, INDEX, SCALE))
+output.writelines("\n")
+output.writelines("0 1\n")
 
-    factor = cos(2*pi*f/FRAMES)*SCALE
-    for i in range(len(x)):
-        nx = x[i] + dx[i]*factor
-        ny = y[i] + dy[i]*factor
-        nz = z[i] + dz[i]*factor
-        output.writelines("%3s %11.5f %11.5f %11.5f\n" %(atoms[i], nx, ny, nz))
+for i in range(len(x)):
+    nx = x[i] + dx[i]*SCALE
+    ny = y[i] + dy[i]*SCALE
+    nz = z[i] + dz[i]*SCALE
+    output.writelines("%3s %11.5f %11.5f %11.5f\n" %(atoms[i], nx, ny, nz))
 
 output.close()
 print "done." 

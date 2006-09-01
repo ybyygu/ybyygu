@@ -116,7 +116,7 @@ def main (argv=None):
     if argv is None:  argv = sys.argv
     
     try:
-        opts, args = getopt.gnu_getopt(argv[1:], 'h', ['help'])
+        opts, args = getopt.getopt(argv[1:], 'h', ['help'])
     except:
         print >>stderr, "Can't parse argument options."
         sys.exit(1)
