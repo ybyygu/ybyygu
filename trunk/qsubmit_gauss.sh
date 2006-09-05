@@ -3,7 +3,7 @@
 # Last updated at 2006 8/31
 
 #------------------------------------------------------------------------
-GAUSSIAN_VAR=$HOME/gaussian/regvar-g03
+GAUSSIAN_VAR=$HOME/.regvar-g03
 GAUSSIAN_CMD="g03"
 GJF_ROOT=$HOME/gjf
 QUEUE_DIR=$GJF_ROOT/queue
