@@ -9,7 +9,7 @@
 #       LICENCE:  GPL version 2 or upper
 #       VERSION:  0.1
 #       CREATED:  2006-8-30 
-#      REVISION:  2006-8-31
+#      REVISION:  2006-9-15
 #===============================================================================#
 import sys
 from sys import stdin, stderr
@@ -39,6 +39,12 @@ def walklog(flog):
     LineLength = 72
     line = flog.readline()
     freq_count = 0
+# gaussian log file begins with a space
+    if not line or not line[0] == ' ':
+        print ' ' + '*'*LineLength
+        print ' this is not a gaussian log file...'
+        return
+
     while line:
         if re.compile(r'^ %').match(line):
             print ' ' + '='*LineLength
