@@ -136,7 +136,7 @@ class xvib:
                     nx = float(self.AtomsCoordinateInfo[i]["x"]) + float(self.FreqVibInfo[index-1][i][0])*factor
                     ny = float(self.AtomsCoordinateInfo[i]["y"]) + float(self.FreqVibInfo[index-1][i][1])*factor
                     nz = float(self.AtomsCoordinateInfo[i]["z"]) + float(self.FreqVibInfo[index-1][i][2])*factor
-                    OUTPUT.writelines("%3s %11.5f %11.5f %11.5f\n" %( ATOMS[int(self.AtomsCoordinateInfo[i]["atom_num"])], nx, ny, nz))
+                    OUTPUT.writelines("%3s %11.5f %11.5f %11.5f\n" %( ATOMS[int(self.AtomsCoordinateInfo[i]["atom_num"])-1], nx, ny, nz))
 
             OUTPUT.close()
             print "Please check %s." % filename 
