@@ -41,7 +41,7 @@ submit()
           cd $WORK_DIR
           mv $QUEUE_DIR/$gauss_input $WORK_DIR/
           cat $gauss_input|tr -d '\r' \
-          |$GAUSSIAN_CMD &> ${gauss_input/%.*/.log}
+          |$GAUSSIAN_CMD &> ${gauss_input%.*}.log
         )
         
         # wait for a long time
