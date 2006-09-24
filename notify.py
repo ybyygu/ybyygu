@@ -28,6 +28,20 @@ class NotifyMail:
         self.notify(text, timeout=0)
 
 
+def safeEncode(string, encode):
+    if not encode :
+        encode = "GBK"
+    try:
+        res = unicode(string, encode)
+    except UnicodeDecodeError:
+        try:
+            res = unicode(string, "UTF8")
+        except:
+            res = "Can't encode string."
+
+    return res
+        
+
 def filterMail():
     import re
     import email.Header
@@ -52,15 +66,12 @@ def filterMail():
     elif mail_subject:
         subject=email.Header.decode_header(mail_subject)[0][0]
         subcode=email.Header.decode_header(mail_subject)[0][1]
-        if not subcode:
-            subcode = "UTF-8"
-        mail_subject = unicode(subject,subcode)
+        mail_subject = safeEncode(mail_subject, subcode)
 
         mail_from = email.Header.decode_header(mail_from)[0][0]
         subcode = email.Header.decode_header(mail_from)[0][1]
-        if not subcode:
-            subcode = "UTF-8"
-        mail_from = unicode(mail_from, subcode)
+        mail_from = safeEncode(mail_from, subcode)
+
         # dbus notification can't display string containing "<|>"
         mail_from = mail_from.replace("<", "[")
         mail_from = mail_from.replace(">", "]")
