@@ -31,6 +31,7 @@ class NotifyMail:
 def safeEncode(string, encode):
     if not encode :
         encode = "GBK"
+    
     try:
         res = unicode(string, encode)
     except UnicodeDecodeError:
@@ -49,33 +50,29 @@ def filterMail():
     mail_from = ""
     mail_subject = ""
 
-    rexMailFrom = re.compile(r'^From: ([^<]*)')
-    rexMailSubject = re.compile(r'^Subject: (.*$)')
-    line = sys.stdin.readline() 
-    while line:
-        if rexMailFrom.match(line):
-            mail_from = rexMailFrom.match(line).groups()[0].strip()
-        elif rexMailSubject.match(line):
-            mail_subject = rexMailSubject.match(line).groups()[0].strip()
+    lines = ''.join(sys.stdin.readlines())
+    print lines,
 
-        line = sys.stdin.readline()
-        print line,
-
-    if not mail_from:
-        return None
-    elif mail_subject:
-        subject=email.Header.decode_header(mail_subject)[0][0]
-        subcode=email.Header.decode_header(mail_subject)[0][1]
+    if lines:
+        mail = email.message_from_string(lines)
+        mail_subject=email.Header.decode_header(mail['subject'])[0][0]
+        subcode = email.Header.decode_header(mail['subject'])[0][1]
         mail_subject = safeEncode(mail_subject, subcode)
-
-        mail_from = email.Header.decode_header(mail_from)[0][0]
-        subcode = email.Header.decode_header(mail_from)[0][1]
+        if mail_subject == '':
+            mail_subject = 'No Subject'
+        
+        mail_from = email.Header.decode_header(mail['from'])[0][0]
+        subcode = email.Header.decode_header(mail['from'])[0][1]
         mail_from = safeEncode(mail_from, subcode)
 
-        # dbus notification can't display string containing "<|>"
-        mail_from = mail_from.replace("<", "[")
-        mail_from = mail_from.replace(">", "]")
+        rexMailFrom = re.compile(r'^([^<]*)<([^<]+>)')
+        if rexMailFrom.match(mail_from):
+            mail_from = rexMailFrom.match(mail_from).groups()[0].strip()
+            if mail_from == '' or mail_from == '""':
+                mail_from = rexMailFrom.match(mail_from).groups()[1].strip()
         return mail_from, mail_subject
+    else:
+        return None
 
 
 if __name__ == "__main__":
