@@ -45,6 +45,7 @@ def safeEncode(string, encode):
 
 def filterMail():
     import re
+    import email
     import email.Header
 
     mail_from = ""
@@ -61,10 +62,11 @@ def filterMail():
         if mail_subject == '':
             mail_subject = 'No Subject'
         
-        mail_from = email.Header.decode_header(mail['from'])[0][0]
-        subcode = email.Header.decode_header(mail['from'])[0][1]
+        mail_from = mail['from'].replace('"', '')
+        mail_from = email.Header.decode_header(mail_from)[0][0]
+        subcode = email.Header.decode_header(mail_from)[0][1]
+        print mail['from']
         mail_from = safeEncode(mail_from, subcode)
-
         rexMailFrom = re.compile(r'^([^<]*)<([^<]+>)')
         if rexMailFrom.match(mail_from):
             mail_from = rexMailFrom.match(mail_from).groups()[0].strip()
