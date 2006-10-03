@@ -9,14 +9,16 @@
 #       LICENCE:  GPL version 2 or upper
 #       VERSION:  0.1
 #       CREATED:  2006-8-30 
-#      REVISION:  2006-9-15
+#      REVISION:  2006-8-31
 #===============================================================================#
 import sys
 from sys import stdin, stderr
+import os
 from os.path import expanduser, join, exists, isdir, isfile
 import glob
 
-DefaultWD = expanduser("~/gjf/work")
+DefaultWD = expanduser("~/") + "gjf_*/work." + os.popen('/bin/hostname').read().strip()
+
 DefaultLogfiles = glob.glob(join(DefaultWD, "*.log"))
 
 def SummaryGassianlogFromFiles(gaussian_log_files):
@@ -39,12 +41,6 @@ def walklog(flog):
     LineLength = 72
     line = flog.readline()
     freq_count = 0
-# gaussian log file begins with a space
-    if not line or not line[0] == ' ':
-        print ' ' + '*'*LineLength
-        print ' this is not a gaussian log file...'
-        return
-
     while line:
         if re.compile(r'^ %').match(line):
             print ' ' + '='*LineLength
