@@ -87,9 +87,9 @@ queue()
             GJF=$(ssh $queue_server "(cd $queue_dir && ls *.gjf *.com) | head -n 1")
 
             if [[ "$GJF" != '' ]]; then
-                scp -q $REMOTE_QUEUE_DIR/$GJF $WORK_DIR/ && \
+                scp -q "$REMOTE_QUEUE_DIR/\"$GJF\"" $WORK_DIR/ && \
                 # not a test, so delete remote file
-                [[ "$1" != '-' ]] && ssh $queue_server "rm -f $queue_dir/$GJF"
+                [[ "$1" != '-' ]] && ssh $queue_server "rm -f \"$queue_dir/$GJF\""
                 echo "queue: get $GJF from $queue_server"
             else
                 echo 'queue: remote queue is empty.'
