@@ -362,14 +362,14 @@ jobcontrol()
             local temp
             read -s temp
             echo
-            summary $WORK_DIR/*.log|pager
+            summary $WORK_DIR/*.log| less
             echo -n "jobcontrol: "
         elif [[ "$answer" == "log" ]]; then
             echo -n "Show `basename $LOG` content. Press enter to begin and q to exit pager."
             local temp
             read -s temp
             echo
-            cat $LOG | pager
+            cat $LOG | less
             echo -n "jobcontrol: "
         elif [[ "$answer" == "exit" || "$answer" == "quit" || "$answer" == "q" ]]; then
             break
