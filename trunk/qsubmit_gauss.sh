@@ -294,7 +294,7 @@ jobcontrol()
         read answer
 
         if [[ "$answer" == "help" ]]; then
-            echo "available command: pause, continue, kill, terminate, summary, queue, jobs"
+            echo "available command: pause, continue, kill, terminate, summary, queue, jobs, log"
             echo -n "jobcontrol: "
         elif [[ "$answer" == "pause" ]]; then
             eid=$(/bin/ps -s $sid -o pid | tail -n 1)
@@ -362,6 +362,13 @@ jobcontrol()
             read -s temp
             echo
             summary $WORK_DIR/*.log|pager
+            echo -n "jobcontrol: "
+        elif [[ "$answer" == "log" ]]; then
+            echo -n "Show `basename $LOG` content. Press enter to begin and q to exit pager."
+            local temp
+            read -s temp
+            echo
+            cat $LOG | pager
             echo -n "jobcontrol: "
         elif [[ "$answer" == "exit" || "$answer" == "quit" || "$answer" == "q" ]]; then
             break
