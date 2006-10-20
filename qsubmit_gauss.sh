@@ -15,7 +15,6 @@ ARCHIVE_DIR=$GJF_ROOT/ARCHIVE
 LOG=$ARCHIVE_DIR/qsubmit_gauss.log
 #------------------------------------------------------------------------
 
-
 archive()
 {
     local remote_log=$REMOTE_ARCHIVE_DIR/`basename $LOG`
@@ -222,6 +221,8 @@ configure()
                         return 1
                     fi
                 fi
+            else
+                break
             fi
         fi
     done
