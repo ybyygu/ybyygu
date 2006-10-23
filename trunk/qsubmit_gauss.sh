@@ -5,15 +5,8 @@
 #  What you need: screen, rsync
 #+ and passwordless ssh connection to the remote server
 
-#------------------------------------------------------------------------
-GJF_ROOT=$HOME/gjf
-QUEUE_DIR=$GJF_ROOT/queue
-WORK_DIR=$GJF_ROOT/work
-STATUS="$WORK_DIR/status"
-DEBUG="$WORK_DIR/debug"
-ARCHIVE_DIR=$GJF_ROOT/ARCHIVE
-LOG=$ARCHIVE_DIR/qsubmit_gauss.log
-#------------------------------------------------------------------------
+# tuned for icc shared space server
+export LANG=C
 
 archive()
 {
@@ -95,10 +88,11 @@ queue()
         echo "queue: I will process local queue firstly."
 
         # not a test
-        [[ "$1" != '-' ]] && mv "$QUEUE_DIR/$GJF" "$WORK_DIR/"
+        [[ "$1" != 'dryrun' ]] && mv "$QUEUE_DIR/$GJF" "$WORK_DIR/"
     else
         # do the same thing as before
-        [[ "$1" != '-' ]] && mv "$QUEUE_DIR/$GJF" "$WORK_DIR/" 
+        echo "queue: get $GJF from $QUEUE_DIR"
+        [[ "$1" != 'dryrun' ]] && mv "$QUEUE_DIR/$GJF" "$WORK_DIR/" 
     fi
     
     return 0
@@ -109,20 +103,23 @@ cleaning()
 {
     for file in $GAUSS_SCRDIR/{*.rwf,*.chk,*.scr,*.d2e,*.int,*.inp}; do
         local check=$(pgrep -lf `basename $file`)
-        [[ "$check" ]] || rm -f "$file"
+        [[ "$check" == "" ]] && rm -f "$file"
     done
 }
 
 submit()
 {
+    # restore the default settings
+    source ~/.regvar
+    #+ use a local scratch directory
+    GAUSS_SCRDIR=$GAUSS_SCRDIR/$(hostname)
+
     if  [[ ! -d "$GAUSS_SCRDIR" ]]; then
         mkdir -p "$GAUSS_SCRDIR"
-        echo "submit: Please export GAUSS_SCRDIR in your .bashrc or $HOME/.regvar." >&2
-        return 1
     else
         cleaning
     fi
-    
+   
     if ! queue; then
         echo "submit: No more jobs, I will exit now." >&2
         return 0
@@ -139,7 +136,8 @@ submit()
         
         # wait for a long time
         echo "++ End   : $(date +%c)" >> "$STATUS"
-    
+
+        # archive and submit again 
         archive "$GJF" && submit
     fi
 }
@@ -282,43 +280,50 @@ summary()
     egrep 'STEP|Step|step|m D|S     D|m F|S     F|TOTAL E|Linear|Angle b|#|DONE|Energy=|MM Force|SCF Done' $1
 }
 
+# use *PID* to get the process id
+getpid()
+{
+    PID=$(screen -list | sed -n "s/\s\+\([0-9]\+\).$SESSION_NAME\s\+.*/\1/p" | tail -n 1)
+    [[ "$PID" == "" ]] && return 1
+    # the whole session id
+    SID=$(/usr/bin/pgrep -P "$PID")
+    [[ "$SID" == "" ]] && return 1
+    # the l*.exe, eg. l502.exe
+    GID=$(/bin/ps -s "$SID" -o pid | tail -n 1)
+    
+    return 0
+}
+
 jobcontrol()
 {
-    local pid=$1
-
-    local answer sid eid
-    sid=$(/usr/bin/pgrep -P $pid)
-
     echo "jobcontrol: Please enter help to show available command, and enter quit or q to exit."
     echo -n "jobcontrol: "
-    while true; do
-        read answer
 
+    local answer check
+    while true; do
+        if ! getpid; then
+            echo "queue was terminated. exit ..."
+            break 
+        fi
+        
+        read answer
+        # test answer
         if [[ "$answer" == "help" ]]; then
-            echo "available command: pause, continue, kill, terminate, summary, queue, jobs, log"
+            echo "available command: pause, continue, kill, terminate, summary, queue, status, log, top, clear"
             echo -n "jobcontrol: "
         elif [[ "$answer" == "pause" ]]; then
-            eid=$(/bin/ps -s $sid -o pid | tail -n 1)
-            if [[ "$eid" != "" ]]; then
-                kill -STOP $eid
-                echo "Current job was paused, and enter continue to resume it." 
-                echo -n "jobcontrol: "
-            fi
-        elif [[ "$answer" == "continue" ]]; then
-            eid=$(/bin/ps -s $sid -o pid | tail -n 1)
-            if [[ "$eid" != "" ]]; then
-                kill -CONT $eid && echo -n "jobcontrol: "
-            fi
+            kill -STOP $GID
+            echo "Current job was paused, and enter continue to resume it." 
+            echo -n "jobcontrol: "
+        elif [[ "$answer" == "continue" || "$answer" == "resume" ]]; then
+            kill -CONT $GID && echo -n "jobcontrol: "
         elif [[ "$answer" == "kill" ]]; then
             echo -n "jobcontrol: Are you really want to kill current job? (y/N) "
             read answer
             if [[ "$answer" == "y" ]]; then
-                eid=$(/bin/ps -s $sid -o pid | tail -n 1)
-                if [[ "$eid" != "" ]]; then
-                    kill $eid 
-                    echo "jobcontrol: Current job has been killed."
-                    echo -n "jobcontrol: "
-                fi
+                kill $GID 
+                echo "jobcontrol: Current job has been killed."
+                echo -n "jobcontrol: "
             else
                 echo -n "jobcontrol: "
             fi
@@ -326,34 +331,43 @@ jobcontrol()
             echo -n "jobcontrol: Are you really want to terminate current queue? (y/N) "
             read answer
             if [[ "$answer" == "y" ]]; then
-                eid=$(/bin/ps -s $sid -o pid | tail -n 1)
-                if [[ "$eid" != "" ]]; then
-                    (kill $pid; kill $eid) && echo "jobcontrol: Queue has been terminated. exiting..." && break
-                fi
+                (kill $PID; kill $GID) && echo "jobcontrol: Queue has been terminated. exiting..." && break
             else
                 echo -n "jobcontrol: "
             fi
-        elif [[ "$answer" == "queue" ]]; then
-            echo -n "queued jobs:"
+        elif [[ "$answer" == "queue" || "$answer" == "ls" ]]; then
             local files=$(ls $QUEUE_DIR/{*.gjf,*.com} 2>/dev/null)
             if [[ "$files" == "" ]]; then
                 echo "  none"
             else
-                for f in "$files"; do
+                for f in $files; do
                     echo "  `basename $f`"
                 done
             fi
 
             echo -n "jobcontrol: "
-        elif [[ "$answer" == "jobs" ]]; then
-            echo -n "current running job:"
+        elif [[ "$answer" == "status" ]]; then
             local files=$(ls $WORK_DIR/*.gjf)
             if [[ "$files" == "" ]]; then
                 echo "  none"
             else
                 for f in "$files"; do
-                    echo "  `basename $f`"
+                    echo -n "`basename $f`: "
+                    break
                 done
+            fi
+            
+            local check=$(ps -o stat $GID|wc -l)
+            if [[ "$check" -ne 2 ]]; then
+                echo "You should not see this."
+                break;
+            fi
+
+            check=$(ps -o stat $GID | tail -n 1 |grep 'T')
+            if [[ "$check" != "" ]]; then
+                echo "  [paused]"
+            else
+                echo "  [running]"
             fi
 
             echo -n "jobcontrol: "
@@ -362,7 +376,7 @@ jobcontrol()
             local temp
             read -s temp
             echo
-            summary $WORK_DIR/*.log| less
+            summary $WORK_DIR/*.log | less
             echo -n "jobcontrol: "
         elif [[ "$answer" == "log" ]]; then
             echo -n "Show `basename $LOG` content. Press enter to begin and q to exit pager."
@@ -370,6 +384,12 @@ jobcontrol()
             read -s temp
             echo
             cat $LOG | less
+            echo -n "jobcontrol: "
+        elif [[ "$answer" == "top" ]]; then
+            top
+            echo -n "jobcontrol: "
+        elif [[ "$answer" == "clear" || "$answer" == "c" ]]; then
+            clear
             echo -n "jobcontrol: "
         elif [[ "$answer" == "exit" || "$answer" == "quit" || "$answer" == "q" ]]; then
             break
@@ -385,39 +405,20 @@ if [[ ! -f ~/.regvar ]]; then
     configure
     echo "Now, you can run this command again."
     exit 0
-else
-    # Leave a chance for customing gaussian environment
-    source ~/.regvar
 fi
 
-mkdir -p "$WORK_DIR"
-if [ $# == 0 ]; then
-
-    check=$(screen -list | grep qsg)
-    if [[ "$check" == "" ]]; then
-        if ! queue -; then
-            echo "Please put something into \"$QUEUE_DIR\", then run this command again."
-            exit 0
-        fi
-
-        # use screen to store our session
-        screen -S qsg -D -m $0 -submit &
-        $0 -job $pid
-#        echo "your GJF_ROOT is $GJF_ROOT."
-#        echo "Use \"screen -r qsg\" to attach the session."
-    else
-        pid=${check%.*}
-        echo "The previous queue is still running. "
-        $0 -job $pid
-        exit 1
-    fi
-elif [[ $# -ge 1 ]]; then
-    if [[ "$1" == "-submit" ]]; then
+# parse paremeters
+if [[ $# == 0 ]]; then
+    echo "Tips: You can give me a word to distinguish you from others. eg. $0 qxf"
+elif [[ $# == 1 ]]; then
+    # for internal usage    
+    if [[ "$1" == "+submit" ]]; then
         submit
         exit 0 
-    elif [[ "$1" == "-job" ]]; then
-        jobcontrol $2
+    elif [[ "$1" == "+job" ]]; then
+        jobcontrol
         exit 0
+    # common parameters
     elif [[ "$1" == "--configure" ]]; then
         configure
         exit 0
@@ -425,7 +426,45 @@ elif [[ $# -ge 1 ]]; then
         echo "$0 --help: show this screen."
         echo "$0 --configure: configure the environment."
         echo "$0 : directly submit the queued jobs."
+    else
+        CODE=$1
     fi
+fi
+
+#------------------------------------------------------------------------
+export GJF_ROOT=$HOME/gjf${CODE:+_$CODE}
+export QUEUE_DIR=$GJF_ROOT/queue
+export WORK_DIR=$GJF_ROOT/work${CODE:+.$CODE}
+export STATUS="$WORK_DIR/status"
+export DEBUG="$WORK_DIR/debug"
+export ARCHIVE_DIR=$GJF_ROOT/ARCHIVE
+export LOG=$ARCHIVE_DIR/qsubmit_gauss.log
+#------------------------------------------------------------------------
+
+# do real work
+export SESSION_NAME=qsg${CODE:+-$CODE}
+
+if ! getpid; then
+    if ! queue dryrun; then
+        echo "Please put something into \"$QUEUE_DIR\", then run this command again."
+        exit 0
+    fi
+
+    echo -n "Do you want to process $QUEUE_DIR? (Y/n)"
+    read answer
+    if [[ "$answer" == "" || "$answer" == "y" || "$answer" == "Y" ]]; then
+        # use screen to store our session
+        screen -S $SESSION_NAME -D -m $0 +submit &
+        echo "your GJF_ROOT is $GJF_ROOT."
+        echo "Enter jobcontrol mode ..."
+        $0 +job
+    else
+        exit 0
+    fi
+else
+    echo "Your previous queue is still running. "
+    $0 +job
+    exit 1
 fi
 
 exit 0
