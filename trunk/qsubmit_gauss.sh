@@ -112,7 +112,7 @@ submit()
     # restore the default settings
     source ~/.regvar
     #+ use a local scratch directory
-    GAUSS_SCRDIR=$GAUSS_SCRDIR/$(hostname)
+    export GAUSS_SCRDIR=$GAUSS_SCRDIR/$(hostname)
 
     if  [[ ! -d "$GAUSS_SCRDIR" ]]; then
         mkdir -p "$GAUSS_SCRDIR"
@@ -434,7 +434,7 @@ fi
 #------------------------------------------------------------------------
 export GJF_ROOT=$HOME/gjf${CODE:+_$CODE}
 export QUEUE_DIR=$GJF_ROOT/queue
-export WORK_DIR=$GJF_ROOT/work${CODE:+.$CODE}
+export WORK_DIR=$GJF_ROOT/work${CODE:+.`hostname`}
 export STATUS="$WORK_DIR/status"
 export DEBUG="$WORK_DIR/debug"
 export ARCHIVE_DIR=$GJF_ROOT/ARCHIVE
