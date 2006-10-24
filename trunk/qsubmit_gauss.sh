@@ -156,7 +156,7 @@ configure()
             groot="$answer"
         fi
 
-        if [[ -d "$groot/g03" && -d "$answer/g98" ]]; then
+        if [[ -d "$groot/g03" && -d "$groot/g98" ]]; then
         # wait for your choice.
             while true; do
                 echo -n "configure: choose your gaussian version (g03)? "
