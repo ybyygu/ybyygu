@@ -8,6 +8,18 @@
 # tuned for icc shared space server
 export LANG=C
 
+#------------------------------------------------------------------------
+export GJF_ROOT=$HOME/gjf${CODE:+_$CODE}
+export QUEUE_DIR=$GJF_ROOT/queue
+export WORK_DIR=$GJF_ROOT/work${CODE:+.`hostname`}
+export STATUS="$WORK_DIR/status"
+export DEBUG="$WORK_DIR/debug"
+export ARCHIVE_DIR=$GJF_ROOT/ARCHIVE
+export LOG=$ARCHIVE_DIR/qsubmit_gauss.log
+#------------------------------------------------------------------------
+
+[[ -f ~/.regvar ]] && source .regvar
+
 archive()
 {
     local remote_log=$REMOTE_ARCHIVE_DIR/`basename $LOG`
@@ -73,7 +85,7 @@ queue()
             if [[ "$GJF" != '' ]]; then
                 scp -q "$REMOTE_QUEUE_DIR/\"$GJF\"" $WORK_DIR/ && \
                 # not a test, so delete remote file
-                [[ "$1" != '-' ]] && ssh $queue_server "rm -f \"$queue_dir/$GJF\""
+                [[ "$1" != 'dryrun' ]] && ssh $queue_server "rm -f \"$queue_dir/$GJF\""
                 echo "queue: get $GJF from $queue_server"
             else
                 echo 'queue: remote queue is empty.'
@@ -88,11 +100,15 @@ queue()
         echo "queue: I will process local queue firstly."
 
         # not a test
-        [[ "$1" != 'dryrun' ]] && mv "$QUEUE_DIR/$GJF" "$WORK_DIR/"
+        if [[ "$1" != 'dryrun' ]]; then
+            mv "$QUEUE_DIR/$GJF" "$WORK_DIR/"
+        fi
     else
         # do the same thing as before
         echo "queue: get $GJF from $QUEUE_DIR"
-        [[ "$1" != 'dryrun' ]] && mv "$QUEUE_DIR/$GJF" "$WORK_DIR/" 
+        if [[ "$1" != 'dryrun' ]]; then
+            mv "$QUEUE_DIR/$GJF" "$WORK_DIR/"
+        fi
     fi
     
     return 0
@@ -119,9 +135,9 @@ submit()
     else
         cleaning
     fi
-   
+
     if ! queue; then
-        echo "submit: No more jobs, I will exit now." >&2
+        echo "submit: No more jobs, I will exit now."
         return 0
     else
         mkdir -p "$WORK_DIR"
@@ -156,7 +172,7 @@ configure()
             groot="$answer"
         fi
 
-        if [[ -d "$groot/g03" && -d "$groot/g98" ]]; then
+        if [[ -d "$groot/g03" && -d "$answer/g98" ]]; then
         # wait for your choice.
             while true; do
                 echo -n "configure: choose your gaussian version (g03)? "
@@ -431,15 +447,6 @@ elif [[ $# == 1 ]]; then
     fi
 fi
 
-#------------------------------------------------------------------------
-export GJF_ROOT=$HOME/gjf${CODE:+_$CODE}
-export QUEUE_DIR=$GJF_ROOT/queue
-export WORK_DIR=$GJF_ROOT/work${CODE:+.`hostname`}
-export STATUS="$WORK_DIR/status"
-export DEBUG="$WORK_DIR/debug"
-export ARCHIVE_DIR=$GJF_ROOT/ARCHIVE
-export LOG=$ARCHIVE_DIR/qsubmit_gauss.log
-#------------------------------------------------------------------------
 
 # do real work
 export SESSION_NAME=qsg${CODE:+-$CODE}
@@ -454,7 +461,7 @@ if ! getpid; then
     read answer
     if [[ "$answer" == "" || "$answer" == "y" || "$answer" == "Y" ]]; then
         # use screen to store our session
-        screen -S $SESSION_NAME -D -m $0 +submit &
+        screen -S $SESSION_NAME -D -m $0 +submit >& aa.log &
         echo "your GJF_ROOT is $GJF_ROOT."
         echo "Enter jobcontrol mode ..."
         $0 +job
