@@ -53,29 +53,31 @@ def filterMail():
 
     lines = ''.join(sys.stdin.readlines())
     print lines,
-
-    if lines:
-        mail = email.message_from_string(lines)
-        mail_subject=email.Header.decode_header(mail['subject'])[0][0]
-        subcode = email.Header.decode_header(mail['subject'])[0][1]
-        mail_subject = safeEncode(mail_subject, subcode)
-        if mail_subject == '':
-            mail_subject = 'No Subject'
-        
-        mail_from = mail['from'].replace('"', '')
-        mail_from = email.Header.decode_header(mail_from)[0][0]
-        subcode = email.Header.decode_header(mail_from)[0][1]
-        print mail['from']
-        mail_from = safeEncode(mail_from, subcode)
-        rexMailFrom = re.compile(r'^([^<]*)<([^<]+>)')
-        if rexMailFrom.match(mail_from):
-            mail_from = rexMailFrom.match(mail_from).groups()[0].strip()
-            if mail_from == '' or mail_from == '""':
-                mail_from = rexMailFrom.match(mail_from).groups()[1].strip()
-        return mail_from, mail_subject
-    else:
-        return None
-
+    
+    try:
+        if lines:
+            mail = email.message_from_string(lines)
+            mail_subject=email.Header.decode_header(mail['subject'])[0][0]
+            subcode = email.Header.decode_header(mail['subject'])[0][1]
+            mail_subject = safeEncode(mail_subject, subcode)
+            if mail_subject == '':
+                mail_subject = 'No Subject'
+            
+            mail_from = mail['from'].replace('"', '')
+            mail_from = email.Header.decode_header(mail_from)[0][0]
+            subcode = email.Header.decode_header(mail_from)[0][1]
+            print mail['from']
+            mail_from = safeEncode(mail_from, subcode)
+            rexMailFrom = re.compile(r'^([^<]*)<([^<]+>)')
+            if rexMailFrom.match(mail_from):
+                mail_from = rexMailFrom.match(mail_from).groups()[0].strip()
+                if mail_from == '' or mail_from == '""':
+                    mail_from = rexMailFrom.match(mail_from).groups()[1].strip()
+            return mail_from, mail_subject
+        else:
+            return None
+    except:
+        return 'no_from', 'no_subject'
 
 if __name__ == "__main__":
     os.system("beep -f 1000 -n -f 2000 -n -f 1500")
