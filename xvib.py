@@ -80,7 +80,7 @@ class xvib:
         #    1   6     0.00   0.01   0.00     0.01   0.05   0.00    -0.01  -0.04   0.00
         rexFreqLabel = re.compile(r'^ Frequencies --\s+[\d.-]+')
         rexXYZLabel = re.compile(r'^ Atom AN\s+X\s+Y\s+Z')
-        rexXYZ = re.compile(r'^   \d+\s+\d+(\s+(?P<dx>[\d.-]+)\s+(?P<dy>[\d.-]+)\s+(?P<dz>[\d.-]+)){1,3}\s*$')
+        rexXYZ = re.compile(r'^\s*\d+\s+\d+(\s+[\d.-]+\s+[\d.-]+\s+[\d.-]+){1,3}\s*$')
          
         while line:
             if rexFreqLabel.match(line):
@@ -121,39 +121,50 @@ class xvib:
 
         if type == 'xyz':
             filename = "%s-freq_index_%s.xyz" %( basename(self.GaussLogFileName), index)
-            try:
-                OUTPUT = open(filename, 'w')
-            except IOError:
-                print "Can not open %s to write." % filename
-                return 2
-         
+        elif type == 'gjf':
+            frames = 1
+            filename = "%s-scale(%s).gjf" %( basename(self.GaussLogFileName), scale)
+
+        try:
+            OUTPUT = open(filename, 'w')
+        except IOError:
+            print "Can not open %s to write." % filename
+            return 2
+        if type == 'xyz':
             for i in range(frames):
                 OUTPUT.writelines("%d\n" %( self.TotalAtomNums ))
                 OUTPUT.writelines("frame %02d of %s; index: %s, scale: %s\n" % (i+1, frames, index, scale))
+        elif type == 'gjf':
+            i = 1
+            OUTPUT.writelines('#opt hf/3-21G\n\n')
+            OUTPUT.writelines("Put Keywords Here, check Charge and Multiplicity\n\n" % (index, scale))
+            OUTPUT.writelines("0 1\n")
+            
+        factor = cos(2*pi*i/frames)*scale
+        for i in range( self.TotalAtomNums ):
+            nx = float(self.AtomsCoordinateInfo[i]["x"]) + float(self.FreqVibInfo[index-1][i][0])*factor
+            ny = float(self.AtomsCoordinateInfo[i]["y"]) + float(self.FreqVibInfo[index-1][i][1])*factor
+            nz = float(self.AtomsCoordinateInfo[i]["z"]) + float(self.FreqVibInfo[index-1][i][2])*factor
+            OUTPUT.writelines("%3s %11.5f %11.5f %11.5f\n" %( ATOMS[int(self.AtomsCoordinateInfo[i]["atom_num"])-1], nx, ny, nz))
 
-                factor = cos(2*pi*i/frames)*scale
-                for i in range( self.TotalAtomNums ):
-                    nx = float(self.AtomsCoordinateInfo[i]["x"]) + float(self.FreqVibInfo[index-1][i][0])*factor
-                    ny = float(self.AtomsCoordinateInfo[i]["y"]) + float(self.FreqVibInfo[index-1][i][1])*factor
-                    nz = float(self.AtomsCoordinateInfo[i]["z"]) + float(self.FreqVibInfo[index-1][i][2])*factor
-                    OUTPUT.writelines("%3s %11.5f %11.5f %11.5f\n" %( ATOMS[int(self.AtomsCoordinateInfo[i]["atom_num"])-1], nx, ny, nz))
-
-            OUTPUT.close()
-            print "Please check %s." % filename 
+        OUTPUT.close()
+        print "Please check %s." % filename 
+            
 
 def usage(progname):
-    print 'Usage:', progname, ' [-i index] [-s scale] [-f frames] gauss_logfile'
+    print 'Usage:', progname, ' [-i index] [-s scale] [-f frames] [-t type] gauss_logfile'
     print '    gauss_logfile: The gaussian log file which will be parsed'
     print '    -i index: Which freq will be used? you can use this style: 1-3 or 1,3,2'
     print '    -s scale: Use this value to scale the displacement.'
     print '    -f frames: The total frames of output.'
+    print '    -t type: The output type, xyz or gjf only.'
 
 def parseCmdline(argv):
     # default parameters
-    INDEX = '1'
+    INDEX = [1]
     SCALE = 0.5
     FRAMES = 10
-
+    TYPE = 'xyz'
     """\
      parse command line options
     """
@@ -162,7 +173,7 @@ def parseCmdline(argv):
     PROGNAME = argv[0]
     if len(argv)>1:
         try:
-            opts, args = getopt.gnu_getopt(argv[1:], "hi:s:f:o:", ['help', 'index=', 'scale=', 'frames=', 'output='])
+            opts, args = getopt.gnu_getopt(argv[1:], "hi:s:f:o:t:", ['help', 'index=', 'scale=', 'frames=', 'output=', 'type='])
         except :
             print "Can't parse command line option."
             sys.exit(2)
@@ -204,6 +215,10 @@ def parseCmdline(argv):
                 sys.exit(2)
         elif o in ['-o', '--output']:
             OUTPUTFILENAME = a
+        elif o in ['-t', '--type']:
+            TYPE = a
+            if TYPE != 'gjf' and TYPE != 'xyz':
+                TYPE = 'xyz'
         else:
             usage(PROGNAME)
             sys.exit(2)
@@ -214,7 +229,7 @@ def parseCmdline(argv):
         axvib.parseGassianLogFile(filename)
         if axvib.TotalFreqNums > 0:
             for i in INDEX:
-                axvib.output2File(index = i, scale = SCALE, frames = FRAMES)
+                axvib.output2File(index = i, scale = SCALE, frames = FRAMES, type = TYPE)
     else:
         print "You must specify a gaussian log file."
         sys.exit(2)
