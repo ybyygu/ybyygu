@@ -137,7 +137,7 @@ class xvib:
         elif type == 'gjf':
             i = 1
             OUTPUT.writelines('#opt hf/3-21G\n\n')
-            OUTPUT.writelines("Put Keywords Here, check Charge and Multiplicity\n\n" % (index, scale))
+            OUTPUT.writelines("Put Keywords Here, check Charge and Multiplicity\n\n")
             OUTPUT.writelines("0 1\n")
             
         factor = cos(2*pi*i/frames)*scale
