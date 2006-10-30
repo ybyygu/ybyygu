@@ -120,10 +120,10 @@ class xvib:
             return 1
 
         if type == 'xyz':
-            filename = "%s-freq_index_%s.xyz" %( basename(self.GaussLogFileName), index)
+            filename = "%s-scale(%s)-index(%s).xyz" %( basename(self.GaussLogFileName), scale, index)
         elif type == 'gjf':
             frames = 1
-            filename = "%s-scale(%s).gjf" %( basename(self.GaussLogFileName), scale)
+            filename = "%s-scale(%s)-index(%s).gjf" %( basename(self.GaussLogFileName), scale, index)
 
         try:
             OUTPUT = open(filename, 'w')
