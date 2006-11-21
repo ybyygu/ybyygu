@@ -358,7 +358,7 @@ jobcontrol()
                 echo "  none"
             else
                 for f in $files; do
-                    echo "  `basename $f`"
+                    echo "  `basename \"$f\"`"
                 done
             fi
 
@@ -369,7 +369,7 @@ jobcontrol()
                 echo "  none"
             else
                 for f in "$files"; do
-                    echo -n "`basename $f`: "
+                    echo -n "`basename \"$f\"`: "
                     break
                 done
             fi
