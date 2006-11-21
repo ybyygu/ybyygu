@@ -43,7 +43,7 @@ def safeEncode(string, encode):
     return res
         
 
-def filterMail():
+def filterMail(lines):
     import re
     import email
     import email.Header
@@ -51,50 +51,96 @@ def filterMail():
     mail_from = ""
     mail_subject = ""
 
-    lines = ''.join(sys.stdin.readlines())
-    print lines,
+    if lines:
+        mail = email.message_from_string(lines)
+        mail_subject=email.Header.decode_header(mail['subject'])[0][0]
+        subcode = email.Header.decode_header(mail['subject'])[0][1]
+        mail_subject = safeEncode(mail_subject, subcode)
+        if mail_subject == '':
+            mail_subject = 'No Subject'
+        
+        header = mail['from'].replace('"', '')
+        mail_from = email.Header.decode_header(header)[0][0]
+        subcode = email.Header.decode_header(header)[0][1]
+        mail_from = safeEncode(mail_from, subcode)
+        rexMailFrom = re.compile(r'^([^<]*)<([^<]+>)')
+        if rexMailFrom.match(mail_from):
+            mail_from = rexMailFrom.match(mail_from).groups()[0].strip()
+            if mail_from == '' or mail_from == '""':
+                mail_from = rexMailFrom.match(mail_from).groups()[1].strip()
+        return mail_from, mail_subject
+    else:
+        return None
+
+def autostart():
+    """\
+    setup an autostart cmd
+    """
+    try:
+        os.mkdir(os.path.expanduser('~/.config'))
+        os.mkdir(os.path.expanduser('~/.config/autostart'))
+    except:
+        pass
     
     try:
-        if lines:
-            mail = email.message_from_string(lines)
-            mail_subject=email.Header.decode_header(mail['subject'])[0][0]
-            subcode = email.Header.decode_header(mail['subject'])[0][1]
-            mail_subject = safeEncode(mail_subject, subcode)
-            if mail_subject == '':
-                mail_subject = 'No Subject'
+        file = open(os.path.expanduser('~/.config/autostart/notify-update-dbus.desktop'), 'w')
+    except exceptions.IOError:
+        return 1
+
+    file.writelines('[Desktop Entry]\n')
+    file.writelines('Name=snotify-dubs\n')
+    file.writelines('Encoding=UTF-8\n')
+    file.writelines('Version=1.0\n')
+    file.writelines('Exec=%s\n' % sys.argv[0])
+    file.writelines('X-GNOME-Autostart-enabled=true')
+    return 0
+
+def updateDBUSVar():
+    dbus_var = "DBUS_SESSION_BUS_ADDRESS"
+    if not os.getenv(dbus_var):
+        try:
+            txt = open(os.path.expanduser('~/.dbus')).read().strip()
+            os.putenv(dbus_var, txt)
+        except exceptions.IOError:
+            autostart()
+            return 1
+    else:
+        file = open(os.path.expanduser('~/.dbus'), 'w')
+        file.writelines(os.getenv(dbus_var))
+        file.close()
+
+    return 0
+
+def main():
+    from getopt import getopt
+
+    if len(sys.argv) == 1:
+        lines = ''.join(sys.stdin.readlines())
+        print lines,
+
+        try:
+            # audio notification
+            os.system('beep -f 1000 -n -f 2000 -n -f 1500')
             
-            mail_from = mail['from'].replace('"', '')
-            mail_from = email.Header.decode_header(mail_from)[0][0]
-            subcode = email.Header.decode_header(mail_from)[0][1]
-            print mail['from']
-            mail_from = safeEncode(mail_from, subcode)
-            rexMailFrom = re.compile(r'^([^<]*)<([^<]+>)')
-            if rexMailFrom.match(mail_from):
-                mail_from = rexMailFrom.match(mail_from).groups()[0].strip()
-                if mail_from == '' or mail_from == '""':
-                    mail_from = rexMailFrom.match(mail_from).groups()[1].strip()
-            return mail_from, mail_subject
-        else:
-            return None
-    except:
-        return 'no_from', 'no_subject'
+            # followed by a visual notification
+            if updateDBUSVar() == 0:
+                res = filterMail(lines)
+                notify = NotifyMail()
+                if res:
+                    (f, s) = res
+                    notify.notifyMail(f,s)
+        except:
+            pass
+    else:
+        try:
+            opts, args = getopt(sys.argv[1:], "t", ["test"])
+        except getopt.GetoptError:
+            sys.exit(2)
+
+        for o, a in opts:
+            if o in ['-t', '--test']:
+                updateDBUSVar()
+    
 
 if __name__ == "__main__":
-    os.system("beep -f 1000 -n -f 2000 -n -f 1500")
-
-    dbus_var = "DBUS_SESSION_BUS_ADDRESS"
-    if not os.environ.get(dbus_var):
-        user = os.popen("/usr/bin/whoami").read().strip()
-        pid = os.popen("pgrep -u %s gnome-session" % user).read().strip()
-        fp = open("/proc/%s/environ" % pid, 'r')
-        txt = os.popen("grep -z %s /proc/%s/environ" % (dbus_var,pid) ).read().strip()[:-1]
-        os.putenv(dbus_var, txt[len(dbus_var + "="):])
-        fp.close()
-         
-    notify = NotifyMail()
-    res = filterMail()
-    if res:
-        (f, s) = res
-        notify.notifyMail(f,s)
-
-    sys.exit(0)
+    main()

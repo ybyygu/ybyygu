@@ -96,7 +96,7 @@ queue()
             return 1
         fi 
     elif [[ -n "$REMOTE_QUEUE_DIR"  ]]; then
-        echo "queue: Local queue is not empty."
+        echo "queue: Local queue is not empty. I found $GJF."
         echo "queue: I will process local queue firstly."
 
         # not a test
@@ -299,10 +299,11 @@ summary()
 # use *PID* to get the process id
 getpid()
 {
-    PID=$(screen -list | sed -n "s/\s\+\([0-9]\+\).$SESSION_NAME\s\+.*/\1/p" | tail -n 1)
+    PID=$(screen -list | grep ".$SESSION_NAME" | tail -n 1)
+    PID=${PID%.$SESSION_NAME*}
     [[ "$PID" == "" ]] && return 1
     # the whole session id
-    SID=$(/usr/bin/pgrep -P "$PID")
+    SID=$(/usr/bin/pgrep -P $PID)
     [[ "$SID" == "" ]] && return 1
     # the l*.exe, eg. l502.exe
     GID=$(/bin/ps -s "$SID" -o pid | tail -n 1)
@@ -461,7 +462,7 @@ if ! getpid; then
     read answer
     if [[ "$answer" == "" || "$answer" == "y" || "$answer" == "Y" ]]; then
         # use screen to store our session
-        screen -S $SESSION_NAME -D -m $0 +submit >& aa.log &
+        screen -S $SESSION_NAME -D -m $0 +submit &
         echo "your GJF_ROOT is $GJF_ROOT."
         echo "Enter jobcontrol mode ..."
         $0 +job
