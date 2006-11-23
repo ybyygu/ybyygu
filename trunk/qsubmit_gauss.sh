@@ -18,7 +18,7 @@ export ARCHIVE_DIR=$GJF_ROOT/ARCHIVE
 export LOG=$ARCHIVE_DIR/qsubmit_gauss.log
 #------------------------------------------------------------------------
 
-[[ -f ~/.regvar ]] && source .regvar
+[[ -f ~/.regvar ]] && source ~/.regvar
 
 archive()
 {
@@ -358,13 +358,13 @@ jobcontrol()
                 echo "  none"
             else
                 for f in $files; do
-                    echo "  `basename \"$f\"`"
+                    echo "  `basename $f`"
                 done
             fi
 
             echo -n "jobcontrol: "
         elif [[ "$answer" == "status" ]]; then
-            local files=$(ls $WORK_DIR/*.gjf)
+            local files=$(ls $WORK_DIR/*.gjf 2>/dev/null)
             if [[ "$files" == "" ]]; then
                 echo "  none"
             else
@@ -440,14 +440,23 @@ elif [[ $# == 1 ]]; then
         configure
         exit 0
     elif [[ "$1" == "--help" ]]; then
-        echo "$0 --help: show this screen."
-        echo "$0 --configure: configure the environment."
-        echo "$0 : directly submit the queued jobs."
+        echo "`basename $0` : directly submit the queued jobs"
+        echo "  or with following options:"
+        echo "  --help: show this screen."
+        echo "  --configure: configure the environment."
+        echo "  --install site1 site2 ... install this command into home-bin directories of sites."
+        exit 0
     else
         CODE=$1
     fi
-fi
+elif [[ "$1" == "--install" ]]; then
+        shift 1
+        for site in $*; do
+            scp "$0" "$site:$HOME/bin/"
+        done
+        exit 0
 
+fi
 
 # do real work
 export SESSION_NAME=qsg${CODE:+-$CODE}
@@ -463,6 +472,8 @@ if ! getpid; then
     if [[ "$answer" == "" || "$answer" == "y" || "$answer" == "Y" ]]; then
         # use screen to store our session
         screen -S $SESSION_NAME -D -m $0 +submit &
+        echo "Please wait ..."
+        sleep 3
         echo "your GJF_ROOT is $GJF_ROOT."
         echo "Enter jobcontrol mode ..."
         $0 +job
