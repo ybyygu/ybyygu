@@ -13,22 +13,31 @@
 #===============================================================================#
 import sys
 from sys import stdin, stderr
-from os.path import expanduser, join, exists, isdir, isfile
+import os
+from os.path import expanduser, join, exists, isdir, isfile, basename
 import glob
 
 DefaultWD = expanduser("~/gjf/work")
 DefaultLogfiles = glob.glob(join(DefaultWD, "*.log"))
+LineLength = 72
 
-def SummaryGassianlogFromFiles(gaussian_log_files):
+def SummaryGassianlogFromFiles(gaussian_log_files, output_steps):
+    global LineLength
+
     for log in gaussian_log_files:
         try:
             flog = open(log, 'r')
         except IOError:
             print >>stderr, "Can't open %s to read!" %(log)
             continue
-        print "%s:" % log
+        hint = " %s " % basename(log)
+        print "[" + "="*((LineLength - len(hint))/2) + hint + "="*((LineLength - len(hint))/2) + "]"
+        if read_backwards(flog, output_steps):
+            print " " + ":"* LineLength
         walklog(flog)
         flog.close()
+        hint = " %s " % basename(log)
+        print "[" + "="*((LineLength - len(hint))/2) + hint + "="*((LineLength - len(hint))/2) + "]"
 
 def SummaryGaussianlogFromStdin():
     return walklog(sys.stdin)
@@ -36,7 +45,7 @@ def SummaryGaussianlogFromStdin():
 def walklog(flog):
     import re
     
-    LineLength = 72
+    global LineLength
     line = flog.readline()
     freq_count = 0
 # gaussian log file begins with a space
@@ -47,7 +56,6 @@ def walklog(flog):
 
     while line:
         if re.compile(r'^ %').match(line):
-            print ' ' + '='*LineLength
             while line and re.compile(r'^ %').match(line):
                 print line,
                 line = flog.readline()
@@ -60,7 +68,7 @@ def walklog(flog):
                     break
                 else:
                     print line,
-            print  ' ' + '='*LineLength
+            print  ' ' + '-'*LineLength
         elif line.find("Number of steps in this run=") >= 0:
             print line,
 # print SCF information and the next two lines
@@ -82,12 +90,14 @@ def walklog(flog):
             print line,
             while line and line.find("Eigenvalues ---") >=0:
                 line = flog.readline()
-# print converged information and the next 5 lines
+# print converged information
         elif line.find("Converged?") >= 0:
             print " " + '-'*LineLength
             print line, 
-            for i in range(5):
+            for i in range(7):
                 line = flog.readline()
+                if line.find('GradGradGrad') >=0:
+                    break
                 print line,
             print  " " + '-'*LineLength
         elif line.find("Frequencies --") >= 0:
@@ -106,6 +116,37 @@ def walklog(flog):
 
         line = flog.readline()
 
+def read_backwards(fp, maxrounds = 5, sizehint = 20000):
+    """\
+     Step number n-4 out of ... # stop here
+     ...
+     Step number n-1 out of ...
+     Step number n out of ...
+    """
+
+    # jump to the end of the file
+    fp.seek(0, 2)
+
+    round = 0
+    while round < maxrounds: 
+        try:
+            fp.seek(-sizehint, 1)
+        except:
+            fp.seek(0, 0)
+            return False
+
+        pos = fp.read(sizehint).rfind(' Step number')
+        fp.seek(-sizehint, 1)
+        if pos != -1:
+            fp.seek(pos, 1)
+            round += 1
+        elif fp.tell() == 0:
+            return False
+        else:
+            continue
+
+    return True
+        
 def usage(program):
     print 'Usage:'
     print ' %s' % program
@@ -125,19 +166,33 @@ def main (argv=None):
     if argv is None:  argv = sys.argv
     
     try:
-        opts, args = getopt.getopt(argv[1:], 'h', ['help'])
+        opts, args = getopt.getopt(argv[1:], 'hin:', ['help', 'install', 'step='])
     except:
         print >>stderr, "Can't parse argument options."
         sys.exit(1)
-    
+   
+    output_steps = 5 
     for o, a in opts:
         if o in ('-h', '--help'):
             usage(sys.argv[0])
             sys.exit(0)
+        elif o in ('-i', '--install'):
+            if args:
+                for s in args:
+                    os.system("scp %s %s:%s/bin/" % (argv[0], s, os.getenv('HOME')))
+            else:
+                print "No sites specified."
+            sys.exit(0)
+        elif o in ('-n', '--step'):
+            try:
+                output_steps = int(a)
+            except:
+                output_steps = 5
+            
 
 # try to read from default gaussian output directory if no argv specified
     if len(argv)==1:
-        SummaryGassianlogFromFiles(DefaultLogfiles)
+        SummaryGassianlogFromFiles(DefaultLogfiles, output_steps)
         return 0
 # try to read from stdin
     elif argv[1] == '-':
@@ -148,7 +203,7 @@ def main (argv=None):
             GaussianLogfiles = glob.glob(join(args[0], "*.log")) + glob.glob(join(args[0], "*.out"))
         else:
             GaussianLogfiles = args
-        SummaryGassianlogFromFiles(GaussianLogfiles)
+        SummaryGassianlogFromFiles(GaussianLogfiles, output_steps)
         return 0
 
 if (__name__ == "__main__"):
