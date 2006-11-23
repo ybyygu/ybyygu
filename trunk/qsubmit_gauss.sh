@@ -25,7 +25,7 @@ archive()
     local remote_log=$REMOTE_ARCHIVE_DIR/`basename $LOG`
     local gjf=$1
     local log=${gjf%.*}.log
-    [[ ! -f $WORK_DIR/$gjf ]] && return 1
+    # [[ ! -f $WORK_DIR/$gjf ]] && return 1
 
     local str=$(tail "$WORK_DIR/$log" |grep  "Normal termination")
 
@@ -43,6 +43,7 @@ archive()
     echo "++ To    : $ARCHIVE_DIR/$state/$dir_name/" >> $STATUS
     echo >> $STATUS
     
+    cp "$STATUS" $ARCHIVE_DIR/$state/$dir_name/ 
     if [[ -n "$REMOTE_ARCHIVE_DIR" ]] ; then
         scp -q "$remote_log" $ARCHIVE_DIR/
     fi
@@ -144,10 +145,12 @@ submit()
         # submit gaussian jobs
         echo "++ run on: `hostname`" > "$STATUS"
         echo "++ Start : $(date +%c)" >> "$STATUS"
-        # convert DOS newlines to unix format, and then submit it
+        #  convert DOS newlines to unix format, and then submit it
+        #  Sometimes, gaussian will fail to parse the gjf file when there is no  
+        #+ bland line in the end of the file, so I append one to it.
         (
           cd "$WORK_DIR"
-          cat "$WORK_DIR/$GJF" | tr -d '\r' | $GAUSSIAN_CMD &> "${GJF%.*}".log
+          sed -e 's/$//; $G' "$WORK_DIR/$GJF" | $GAUSSIAN_CMD &> "${GJF%.*}".log
         )
         
         # wait for a long time
