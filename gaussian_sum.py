@@ -82,8 +82,12 @@ def walklog(flog):
             print line,
         elif line.find("exceeded") >= 0:
             print line,
-# print energy = 
+# print energy 
         elif line.find('energy =') >=0:
+            print line,
+        elif re.compile(r'^ Cycle ').match(line):
+            print line,
+        elif re.compile(r'^ E=').match(line):
             print line,
 # print the first line of Eigenvalues
         elif line.find("Eigenvalues ---") >= 0:
