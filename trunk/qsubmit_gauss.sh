@@ -2,10 +2,9 @@
 # Written by ybyygu at 2004
 # Last updated at 19-10-2006
 
-#  What you need: screen, rsync
-#+ and passwordless ssh connection to the remote server
+#  What you need: screen, rsync and passwordless
+#+                ssh connection to the remote server
 
-# tuned for icc shared space server
 export LANG=C
 
 #------------------------------------------------------------------------
@@ -38,7 +37,7 @@ archive()
 
     local dir_pattern=$(date "+%Y-%m%d-%H%M.XXXXXX")
     local dir_name=$(cd $ARCHIVE_DIR/$state && mktemp -d $dir_pattern) || return 2
-    mv "$WORK_DIR"/{$gjf,$log,*.chk} $ARCHIVE_DIR/$state/$dir_name/  2>/dev/null
+    mv "$WORK_DIR"/{*.gjf,*.com,*.log,*.chk} $ARCHIVE_DIR/$state/$dir_name/  2>/dev/null
     echo "++ From  : $gjf" >> $STATUS
     echo "++ To    : $ARCHIVE_DIR/$state/$dir_name/" >> $STATUS
     echo >> $STATUS
@@ -157,7 +156,9 @@ submit()
         echo "++ End   : $(date +%c)" >> "$STATUS"
 
         # archive and submit again 
-        archive "$GJF" && submit
+        if [[ "$1" != 'testmode' ]]; then
+            archive "$GJF" && submit
+        fi
     fi
 }
 
@@ -435,6 +436,9 @@ elif [[ $# == 1 ]]; then
     if [[ "$1" == "+submit" ]]; then
         submit
         exit 0 
+    elif [[ "$1" == "+testmode" ]]; then
+        submit testmode
+        exit 0
     elif [[ "$1" == "+job" ]]; then
         jobcontrol
         exit 0
@@ -442,12 +446,17 @@ elif [[ $# == 1 ]]; then
     elif [[ "$1" == "--configure" ]]; then
         configure
         exit 0
-    elif [[ "$1" == "--help" ]]; then
-        echo "`basename $0` : directly submit the queued jobs"
-        echo "  or with following options:"
+    elif [[ "$1" == "--test" ]]; then
+        export TESTMODE=1
+        echo "Running in test mode ..."
+    elif [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        echo "`basename $0` [options]:"
+        echo "  with no option: directly submit the jobs in your gjf queue"
+        echo " or with following options:"
         echo "  --help: show this screen."
         echo "  --configure: configure the environment."
-        echo "  --install site1 site2 ... install this command into home-bin directories of sites."
+        echo "  --install site1 site2 ... : install this script into home-bin directories of remote sites using scp command."
+        echo "  --test: simply sibmit the job and over. no queue, no archive"
         exit 0
     else
         CODE=$1
@@ -474,9 +483,13 @@ if ! getpid; then
     read answer
     if [[ "$answer" == "" || "$answer" == "y" || "$answer" == "Y" ]]; then
         # use screen to store our session
-        screen -S $SESSION_NAME -D -m $0 +submit &
+        if [[ -z "$TESTMODE" ]]; then
+            screen -S $SESSION_NAME -D -m $0 +submit &
+        else
+            screen -S $SESSION_NAME -D -m $0 +testmode &
+        fi
         echo "Please wait ..."
-        sleep 3
+        sleep 2
         echo "your GJF_ROOT is $GJF_ROOT."
         echo "Enter jobcontrol mode ..."
         $0 +job
