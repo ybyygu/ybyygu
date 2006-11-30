@@ -9,19 +9,20 @@
 #       LICENCE:  GPL version 2 or upper
 #       VERSION:  0.1
 #       CREATED:  2006-8-30 
-#      REVISION:  2006-9-15
+#      REVISION:  2006-11-30
 #===============================================================================#
 import sys
 from sys import stdin, stderr
 import os
 from os.path import expanduser, join, exists, isdir, isfile, basename
 import glob
+from stat import *
+import time
 
-DefaultWD = expanduser("~/gjf/work")
-DefaultLogfiles = glob.glob(join(DefaultWD, "*.log"))
+default_logfiles = glob.glob(expanduser("~/gjf/work/*.log"))
 LineLength = 72
 
-def SummaryGassianlogFromFiles(gaussian_log_files, output_steps):
+def SummaryGassianlogFromFiles(gaussian_log_files, output_steps, warn_old = False):
     global LineLength
 
     for log in gaussian_log_files:
@@ -38,6 +39,12 @@ def SummaryGassianlogFromFiles(gaussian_log_files, output_steps):
         flog.close()
         hint = " %s " % basename(log)
         print "[" + "="*((LineLength - len(hint))/2) + hint + "="*((LineLength - len(hint))/2) + "]"
+
+        # check outdated log 
+
+        span = (time.time() - os.stat(log)[ST_MTIME]) / 3600
+        if warn_old and span > 4:
+            print " ** WARNING! THIS FILE HAS NO CHANGE MORE THAN %d H. **" % span
 
 def SummaryGaussianlogFromStdin():
     return walklog(sys.stdin)
@@ -196,7 +203,7 @@ def main (argv=None):
 
 # try to read from default gaussian output directory if no argv specified
     if len(argv)==1:
-        SummaryGassianlogFromFiles(DefaultLogfiles, output_steps)
+        SummaryGassianlogFromFiles(default_logfiles, output_steps, warn_old = True)
         return 0
 # try to read from stdin
     elif argv[1] == '-':
@@ -206,7 +213,6 @@ def main (argv=None):
         if isdir(args[0]):
             GaussianLogfiles = glob.glob(join(args[0], "*.log")) + glob.glob(join(args[0], "*.out"))
         else:
-            GaussianLogfiles = args
         SummaryGassianlogFromFiles(GaussianLogfiles, output_steps)
         return 0
 
