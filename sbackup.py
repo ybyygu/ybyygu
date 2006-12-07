@@ -4,7 +4,7 @@
 #   DESCRIPTION:  
 # 
 #       OPTIONS:  ---
-#  REQUIREMENTS:  ---
+#  REQUIREMENTS:  rsync, ssh and python of course
 #         NOTES:  Make a directory named as .backup in your home folder, and then
 #              +  put things or their symbol link that you want to backup into this 
 #              +  place.
@@ -12,16 +12,18 @@
 #       LICENCE:  GPL version 2 or upper
 #       VERSION:  0.1
 #       CREATED:  x/10/2006 
-#      REVISION:  17/11/2006
-#===============================================================================#
+#      REVISION:  7/12/2006
+#================================== CONFIG =====================================#
 BackupDir = '~/.backup'
 DestPath = '~/backup'
-RemoteServer = '192.168.5.15'
+RemoteServer = '192.168.5.15'  # If you don't want to use this, just comment it.
 ExcludeFile = '~/.cron/rsync.exclude'
 #===============================================================================#
-import sys, os
-import gnomevfs
+
+import sys
+import os
 import re
+import gnomevfs
 from datetime import datetime
 
 class simpleBackup:
@@ -100,7 +102,11 @@ class simpleBackup:
         """
 
         # I cannot use mv to overwrite same directory, so use cp instead.
-        cmd = 'cp -rdpfu %s/* %s/' % (self.destPath + '/' + old, self.destPath + '/' + new)
+        # cp -a: --archive, same as -dpR
+        # cp -l: --link, link files instead of copying
+        # cp -u: --update, copy only when the SOURCE file is newer than the destination file
+        #                  or when the destination file is missing
+        cmd = 'cp -alfu %s/* %s/' % (self.destPath + '/' + old, self.destPath + '/' + new)
         if self.remoteServer != '':
             cmd = "ssh %s '%s'" % (self.remoteServer, cmd)
 
@@ -231,6 +237,16 @@ class simpleBackup:
         else:
             print "E: rsync failed to backup your directories."
             return 1
+
+#===============================================================================#
+#
+#  Main Program
+#
+#===============================================================================#
+
+###
+# deal with variables
+#
 
 try:
     RemoteServer = RemoteServer

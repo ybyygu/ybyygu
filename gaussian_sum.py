@@ -1,5 +1,25 @@
 #! /usr/bin/env python
 # -*- coding: UTF-8 -*-
+
+# Copyright © 2005 ybyygu
+#
+# This file is part of gaussian_sum.py.
+#
+# gaussian_sum.py is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# gaussian_sum.py is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with gaussian_sum.py; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  
+# USA
+
 #===============================================================================#
 #   DESCRIPTION:  
 # 
@@ -11,6 +31,7 @@
 #       CREATED:  2006-8-30 
 #      REVISION:  2006-11-30
 #===============================================================================#
+
 import sys
 from sys import stdin, stderr
 import os
@@ -24,6 +45,13 @@ LineLength = 72
 
 def SummaryGassianlogFromFiles(gaussian_log_files, output_steps, warn_old = False):
     global LineLength
+    
+    def log_cmp(x, y):
+        x = os.stat(x)[ST_MTIME]
+        y = os.stat(y)[ST_MTIME]
+        return cmp(x,y)
+
+    gaussian_log_files.sort(log_cmp)
 
     for log in gaussian_log_files:
         try:
@@ -124,7 +152,6 @@ def walklog(flog):
             print line,
         elif line.find("Job cpu time:") >= 0:
             print line,
-
         line = flog.readline()
 
 def read_backwards(fp, maxrounds = 5, sizehint = 20000):
@@ -167,20 +194,25 @@ def usage(program):
     print ' %s -h | --help' % program
     print '   show this help screen.'
 
+################################################################################
+#
+#	Main Program
+#
+################################################################################
 
-#==========================================================================
-# MAIN PROGRAM
-#==========================================================================
 def main (argv=None):
     import getopt
 
     if argv is None:  argv = sys.argv
     
     try:
-        opts, args = getopt.getopt(argv[1:], 'hin:', ['help', 'install', 'step='])
-    except:
-        print >>stderr, "Can't parse argument options."
-        sys.exit(1)
+        opts, args = getopt.gnu_getopt(argv[1:], 'hin:', ['help', 'install', 'step='])
+    except AttributeError:
+        try:
+            opts, args = getopt.getopt(argv[1:], 'hin:', ['help', 'install', 'step='])
+        except:
+            print >>stderr, "Can't parse argument options."
+            sys.exit(1)
    
     output_steps = 5 
     for o, a in opts:
@@ -213,6 +245,7 @@ def main (argv=None):
         if isdir(args[0]):
             GaussianLogfiles = glob.glob(join(args[0], "*.log")) + glob.glob(join(args[0], "*.out"))
         else:
+            GaussianLogfiles = args
         SummaryGassianlogFromFiles(GaussianLogfiles, output_steps)
         return 0
 

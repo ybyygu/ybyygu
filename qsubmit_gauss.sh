@@ -1,6 +1,7 @@
 #!/bin/bash
+# VERSION: 1.0
 # Written by ybyygu at 2004
-# Last updated at 19-10-2006
+# Last updated at 30-11-2006
 
 #  What you need: screen, rsync and passwordless
 #+                ssh connection to the remote server
@@ -43,7 +44,7 @@ archive()
     echo >> $STATUS
     
     cp "$STATUS" $ARCHIVE_DIR/$state/$dir_name/ 
-    if [[ -n "$REMOTE_ARCHIVE_DIR" ]] ; then
+    if [[ -z "$LOCAL" && -n "$REMOTE_ARCHIVE_DIR" ]] ; then
         scp -q "$remote_log" $ARCHIVE_DIR/
     fi
 
@@ -53,7 +54,7 @@ archive()
         rm -f $STATUS
     fi
     
-    if [[ -n "$REMOTE_ARCHIVE_DIR" ]] ; then
+    if [[ -z "$LOCAL" && -n "$REMOTE_ARCHIVE_DIR" ]] ; then
         rsync -e ssh -a "$ARCHIVE_DIR/$state/$dir_name/" "$REMOTE_ARCHIVE_DIR/$state/$dir_name" && \
         rm -rf "$ARCHIVE_DIR/$state/$dir_name"
         scp -q "$LOG" "$remote_log"
@@ -71,7 +72,7 @@ queue()
 
     mkdir -p $QUEUE_DIR
     
-    if [[ -n "$REMOTE_QUEUE_DIR" ]]; then
+    if [[ -z "$LOCAL" && -n "$REMOTE_QUEUE_DIR" ]]; then
         local queue_server="${REMOTE_QUEUE_DIR%:*}"
         local queue_dir="${REMOTE_QUEUE_DIR#*:}"
     fi
@@ -95,7 +96,7 @@ queue()
             echo 'queue: local queue is empty.'
             return 1
         fi 
-    elif [[ -n "$REMOTE_QUEUE_DIR"  ]]; then
+    elif [[ -z "$LOCAL" && -n "$REMOTE_QUEUE_DIR"  ]]; then
         echo "queue: Local queue is not empty. I found $GJF."
         echo "queue: I will process local queue firstly."
 
@@ -449,6 +450,9 @@ elif [[ $# == 1 ]]; then
     elif [[ "$1" == "--test" ]]; then
         export TESTMODE=1
         echo "Running in test mode ..."
+    elif [[ "$1" == "--local" ]]; then
+        export LOCAL=1
+        echo "scan your local queue only ..."
     elif [[ "$1" == "--help" || "$1" == "-h" ]]; then
         echo "`basename $0` [options]:"
         echo "  with no option: directly submit the jobs in your gjf queue"
@@ -457,6 +461,7 @@ elif [[ $# == 1 ]]; then
         echo "  --configure: configure the environment."
         echo "  --install site1 site2 ... : install this script into home-bin directories of remote sites using scp command."
         echo "  --test: simply sibmit the job and over. no queue, no archive"
+        echo "  --local: use local queue only, even a remote site specified in .regvar file."
         exit 0
     else
         CODE=$1
