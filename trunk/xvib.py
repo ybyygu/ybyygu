@@ -130,22 +130,28 @@ class xvib:
         except IOError:
             print "Can not open %s to write." % filename
             return 2
+
         if type == 'xyz':
-            for i in range(frames):
+            for f in range(frames):
                 OUTPUT.writelines("%d\n" %( self.TotalAtomNums ))
-                OUTPUT.writelines("frame %02d of %s; index: %s, scale: %s\n" % (i+1, frames, index, scale))
+                OUTPUT.writelines("frame %02d of %s; index: %s, scale: %s\n" % (f+1, frames, index, scale))
+                factor = cos(2*pi*f/frames)*scale
+                for i in range( self.TotalAtomNums ):
+                    nx = float(self.AtomsCoordinateInfo[i]["x"]) + float(self.FreqVibInfo[index-1][i][0])*factor
+                    ny = float(self.AtomsCoordinateInfo[i]["y"]) + float(self.FreqVibInfo[index-1][i][1])*factor
+                    nz = float(self.AtomsCoordinateInfo[i]["z"]) + float(self.FreqVibInfo[index-1][i][2])*factor
+                    OUTPUT.writelines("%3s %11.5f %11.5f %11.5f\n" %( ATOMS[int(self.AtomsCoordinateInfo[i]["atom_num"])-1], nx, ny, nz))
         elif type == 'gjf':
             i = 1
             OUTPUT.writelines('#opt hf/3-21G\n\n')
             OUTPUT.writelines("Put Keywords Here, check Charge and Multiplicity\n\n")
             OUTPUT.writelines("0 1\n")
-            
-        factor = cos(2*pi*i/frames)*scale
-        for i in range( self.TotalAtomNums ):
-            nx = float(self.AtomsCoordinateInfo[i]["x"]) + float(self.FreqVibInfo[index-1][i][0])*factor
-            ny = float(self.AtomsCoordinateInfo[i]["y"]) + float(self.FreqVibInfo[index-1][i][1])*factor
-            nz = float(self.AtomsCoordinateInfo[i]["z"]) + float(self.FreqVibInfo[index-1][i][2])*factor
-            OUTPUT.writelines("%3s %11.5f %11.5f %11.5f\n" %( ATOMS[int(self.AtomsCoordinateInfo[i]["atom_num"])-1], nx, ny, nz))
+            factor = scale
+            for i in range( self.TotalAtomNums ):
+                nx = float(self.AtomsCoordinateInfo[i]["x"]) + float(self.FreqVibInfo[index-1][i][0])*factor
+                ny = float(self.AtomsCoordinateInfo[i]["y"]) + float(self.FreqVibInfo[index-1][i][1])*factor
+                nz = float(self.AtomsCoordinateInfo[i]["z"]) + float(self.FreqVibInfo[index-1][i][2])*factor
+                OUTPUT.writelines("%3s %11.5f %11.5f %11.5f\n" %( ATOMS[int(self.AtomsCoordinateInfo[i]["atom_num"])-1], nx, ny, nz))
 
         OUTPUT.close()
         print "Please check %s." % filename 

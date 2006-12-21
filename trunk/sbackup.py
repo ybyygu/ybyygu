@@ -13,10 +13,10 @@
 #       VERSION:  0.1
 #       CREATED:  x/10/2006 
 #      REVISION:  7/12/2006
-#===============================================================================#
+#================================== CONFIG =====================================#
 BackupDir = '~/.backup'
 DestPath = '~/backup'
-RemoteServer = '192.168.5.15'
+RemoteServer = '192.168.5.15'  # If you don't want to use this, just comment it.
 ExcludeFile = '~/.cron/rsync.exclude'
 #===============================================================================#
 
@@ -237,6 +237,16 @@ class simpleBackup:
         else:
             print "E: rsync failed to backup your directories."
             return 1
+
+#===============================================================================#
+#
+#  Main Program
+#
+#===============================================================================#
+
+###
+# deal with variables
+#
 
 try:
     RemoteServer = RemoteServer
