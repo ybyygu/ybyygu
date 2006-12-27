@@ -8,14 +8,20 @@
 
 export LANG=C
 
+if [[ $# == 1 ]]; then
+    if [[ "${1:0:1}" != "+" && "${1:0:1}" != "-" ]]; then
+        export CODE=$1
+    fi
+fi
+
 #------------------------------------------------------------------------
 export GJF_ROOT=$HOME/gjf${CODE:+_$CODE}
 export QUEUE_DIR=$GJF_ROOT/queue
 export WORK_DIR=$GJF_ROOT/work${CODE:+.`hostname`}
 export STATUS="$WORK_DIR/status"
-export DEBUG="$WORK_DIR/debug"
 export ARCHIVE_DIR=$GJF_ROOT/ARCHIVE
 export LOG=$ARCHIVE_DIR/qsubmit_gauss.log
+export SESSION_NAME=qsg${CODE:+-$CODE}
 #------------------------------------------------------------------------
 
 [[ -f ~/.regvar ]] && source ~/.regvar
@@ -68,9 +74,10 @@ archive()
 queue()
 {   
     # close standard error output
-    exec 2>/dev/null
+    # exec 2>/dev/null
 
     mkdir -p $QUEUE_DIR
+    mkdir -p $WORK_DIR
     
     if [[ -z "$LOCAL" && -n "$REMOTE_QUEUE_DIR" ]]; then
         local queue_server="${REMOTE_QUEUE_DIR%:*}"
@@ -476,7 +483,6 @@ elif [[ "$1" == "--install" ]]; then
 fi
 
 # do real work
-export SESSION_NAME=qsg${CODE:+-$CODE}
 
 if ! getpid; then
     if ! queue dryrun; then
