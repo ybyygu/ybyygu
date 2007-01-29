@@ -1,25 +1,5 @@
 #! /usr/bin/env python
 # -*- coding: UTF-8 -*-
-
-# Copyright © 2005 ybyygu
-#
-# This file is part of gaussian_sum.py.
-#
-# gaussian_sum.py is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# gaussian_sum.py is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with gaussian_sum.py; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  
-# USA
-
 #===============================================================================#
 #   DESCRIPTION:  
 # 
@@ -31,7 +11,6 @@
 #       CREATED:  2006-8-30 
 #      REVISION:  2006-11-30
 #===============================================================================#
-
 import sys
 from sys import stdin, stderr
 import os
@@ -139,6 +118,9 @@ def walklog(flog):
                     break
                 print line,
             print  " " + '-'*LineLength
+        # WARNING may be important!
+        elif line.find("WARNING") >=0:
+            print line,
         elif line.find("Frequencies --") >= 0:
             freq_count += 1
             if freq_count == 1:
@@ -152,6 +134,7 @@ def walklog(flog):
             print line,
         elif line.find("Job cpu time:") >= 0:
             print line,
+
         line = flog.readline()
 
 def read_backwards(fp, maxrounds = 5, sizehint = 20000):
@@ -172,9 +155,9 @@ def read_backwards(fp, maxrounds = 5, sizehint = 20000):
         except:
             fp.seek(0, 0)
             return False
-
+        fpos = fp.tell()
         pos = fp.read(sizehint).rfind(' Step number')
-        fp.seek(-sizehint, 1)
+        fp.seek(fpos, 0)
         if pos != -1:
             fp.seek(pos, 1)
             round += 1
@@ -194,12 +177,10 @@ def usage(program):
     print ' %s -h | --help' % program
     print '   show this help screen.'
 
-################################################################################
-#
-#	Main Program
-#
-################################################################################
 
+#==========================================================================
+# MAIN PROGRAM
+#==========================================================================
 def main (argv=None):
     import getopt
 
