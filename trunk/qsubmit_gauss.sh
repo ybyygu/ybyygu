@@ -22,9 +22,14 @@ export STATUS="$WORK_DIR/status"
 export ARCHIVE_DIR=$GJF_ROOT/ARCHIVE
 export LOG=$ARCHIVE_DIR/qsubmit_gauss.log
 export SESSION_NAME=qsg${CODE:+-$CODE}
+export REGVAR=.regvar${CODE:+-$CODE}
 #------------------------------------------------------------------------
 
-[[ -f ~/.regvar ]] && source ~/.regvar
+if [[ -f ~/$REGVAR ]]; then
+   source ~/$REGVAR
+else
+   source ~/.regvar
+fi   
 
 archive()
 {
@@ -74,7 +79,7 @@ archive()
 queue()
 {   
     # close standard error output
-    # exec 2>/dev/null
+    exec 2>/dev/null
 
     mkdir -p $QUEUE_DIR
     mkdir -p $WORK_DIR
@@ -134,7 +139,12 @@ cleaning()
 submit()
 {
     # restore the default settings
-    source ~/.regvar
+    if [[ -f ~/$REGVAR ]]; then
+       source ~/$REGVAR
+    else
+       source ~/.regvar
+    fi   
+
     #+ use a local scratch directory
     export GAUSS_SCRDIR=$GAUSS_SCRDIR/$(hostname)
 
@@ -267,7 +277,7 @@ configure()
     if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
         while true; do
             echo "configure: IN ORDER TO USE THIS, YOU NEED A PASSWORDLESS SSH CONNECTION TO THE REMOTE SERVER."
-            echo "configure: For more detail, please goole \"passwordless ssh\", and follow the instructions." 
+            echo "configure: For more detail, please google \"passwordless ssh\", and follow the instructions." 
             echo -n "configure: Now, please input your remote queue server's IP address or name. "
             read answer
             if [[ "$answer" != "" ]]; then
@@ -285,16 +295,16 @@ configure()
 
     # show dump
     echo "configure: Please check below lines exactly match your need."
-    echo "configure: If not, configurate again or edit ~/.regvar directly by yourself."
+    echo "configure: If not, configurate again or edit ~/$REGVAR directly by yourself."
     echo "------------------------------------------------------------"
-    echo "export ${version}root=$groot" | tee ~/.regvar
-    echo "export GAUSS_SCRDIR=$gscratch" | tee -a ~/.regvar
-    echo "source $groot/$version/bsd/$version.profile" |tee -a ~/.regvar
-    echo "export GAUSSIAN_CMD=$version" | tee -a ~/.regvar
+    echo "export ${version}root=$groot" | tee ~/$REGVAR
+    echo "export GAUSS_SCRDIR=$gscratch" | tee -a ~/$REGVAR
+    echo "source $groot/$version/bsd/$version.profile" |tee -a ~/$REGVAR
+    echo "export GAUSSIAN_CMD=$version" | tee -a ~/$REGVAR
 
     if [[ "$remote_server" != "" ]]; then
-        echo "export REMOTE_QUEUE_DIR=$remote_server:$QUEUE_DIR" | tee -a ~/.regvar
-        echo "export REMOTE_ARCHIVE_DIR=$remote_server:$ARCHIVE_DIR" | tee -a ~/.regvar
+        echo "export REMOTE_QUEUE_DIR=$remote_server:$QUEUE_DIR" | tee -a ~/$REGVAR
+        echo "export REMOTE_ARCHIVE_DIR=$remote_server:$ARCHIVE_DIR" | tee -a ~/$REGVAR
     fi
     echo "------------------------------------------------------------"
 
@@ -305,13 +315,17 @@ configure()
 # summary log file
 summary()
 {
-    egrep 'STEP|Step|step|m D|S     D|m F|S     F|TOTAL E|Linear|Angle b|#|DONE|Energy=|MM Force|SCF Done' $1
+    if [[ -f ~/bin/gaussian_sum.py ]]; then
+        ~/bin/gaussian_sum.py $1
+    else
+        egrep 'STEP|Step|step|m D|S     D|m F|S     F|TOTAL E|Linear|Angle b|#|DONE|Energy=|MM Force|SCF Done' $1
+    fi
 }
 
 # use *PID* to get the process id
 getpid()
 {
-    PID=$(screen -list | grep ".$SESSION_NAME" | tail -n 1)
+    PID=$(screen -list | grep ".$SESSION_NAME[^\w-]" | tail -n 1)
     PID=${PID%.$SESSION_NAME*}
     [[ "$PID" == "" ]] && return 1
     # the whole session id
@@ -429,7 +443,7 @@ jobcontrol()
 }
 
 # main #
-if [[ ! -f ~/.regvar ]]; then
+if [[ ! -f ~/$REGVAR ]]; then
     echo "Before use this command, you need answer a few questions."
     configure
     echo "Now, you can run this command again."
