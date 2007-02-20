@@ -1,0 +1,175 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.5.4	//
+Cell	mab_query.py	/^class Cell:$/;"	c
+Database	mab_query.py	/^class Database:$/;"	c
+Interpreter	qsg.py	/^class Interpreter(cmd.Cmd):$/;"	c
+NotifyMail	notify.py	/^class NotifyMail:$/;"	c
+Rolodex	rolo.py	/^class Rolodex(cmd.Cmd):$/;"	c
+Row	mab_query.py	/^class Row:$/;"	c
+SummaryGassianlogFromFiles	gaussian_sum.py	/^def SummaryGassianlogFromFiles(gaussian_log_files, output_steps, warn_old = False):$/;"	f
+SummaryGaussianlogFromStdin	gaussian_sum.py	/^def SummaryGaussianlogFromStdin():$/;"	f
+TContact	abook-query.py	/^class TContact:$/;"	c
+TContactSection	abook-query.py	/^class TContactSection:$/;"	c
+TSectionFields	abook-query.py	/^class TSectionFields:$/;"	c
+Table	mab_query.py	/^class Table:$/;"	c
+__getitem__	abook-query.py	/^    def __getitem__(self, index):$/;"	m	class:TSectionFields	file:
+__init__	abook-query.py	/^    def __init__(self):$/;"	m	class:TContact
+__init__	abook-query.py	/^    def __init__(self):$/;"	m	class:TSectionFields
+__init__	abook-query.py	/^    def __init__(self, database):$/;"	m	class:addressBook
+__init__	abook-query.py	/^    def __init__(self, name = '', email = '', notes = ''):$/;"	m	class:contact
+__init__	abook-query.py	/^    def __init__(self, sectionName = ''):$/;"	m	class:TContactSection
+__init__	abook-query.py	/^    def __init__(self, sectionName = ''):$/;"	m	class:contactSection
+__init__	log-restart.py	/^    def __init__(self):$/;"	m	class:zMatrix
+__init__	log-restart.py	/^    def __init__(self, filename):$/;"	m	class:gaussian_log_parser
+__init__	mab_query.py	/^    def __init__ (self):$/;"	m	class:Cell
+__init__	mab_query.py	/^    def __init__ (self):$/;"	m	class:Database
+__init__	mab_query.py	/^    def __init__ (self):$/;"	m	class:Row
+__init__	mab_query.py	/^    def __init__ (self):$/;"	m	class:Table
+__init__	notify.py	/^    def __init__(self):$/;"	m	class:NotifyMail
+__init__	qsg.py	/^    def __init__(self):$/;"	m	class:Interpreter
+__init__	qsg.py	/^    def __init__(self, cmd, name = 'SubmitThread'):$/;"	m	class:submitThread
+__init__	rolo.py	/^    def __init__(self):$/;"	m	class:Rolodex
+__init__	sbackup.py	/^    def __init__(self, backupDir, destPath, lockfile = '\/var\/lock\/sbackup.lock', remoteServer = '', excludeFile = ''):$/;"	m	class:simpleBackup
+__len__	abook-query.py	/^    def __len__(self):$/;"	m	class:TSectionFields	file:
+_exitfunc	sbackup.py	/^    def _exitfunc( self ):$/;"	m	class:simpleBackup
+_folder2time	sbackup.py	/^    def _folder2time(self, folderName):$/;"	m	class:simpleBackup
+_joinFolder	sbackup.py	/^    def _joinFolder(self, old, new):$/;"	m	class:simpleBackup
+_logAlgorithmFilter	sbackup.py	/^    def _logAlgorithmFilter(self):$/;"	m	class:simpleBackup
+_move_backward	log-restart.py	/^    def _move_backward(self, search_key, strollsize = 10000):$/;"	m	class:gaussian_log_parser
+_move_forward	log-restart.py	/^    def _move_forward(self, search_key, strollsize = 10000):$/;"	m	class:gaussian_log_parser
+_removeDir	sbackup.py	/^    def _removeDir(self, dest, force = False):$/;"	m	class:simpleBackup
+adaptAddress	abook-query.py	/^    def adaptAddress(self):$/;"	m	class:addressBook
+adaptContact	abook-query.py	/^    def adaptContact(self):$/;"	m	class:contact
+adaptSection	abook-query.py	/^    def adaptSection(self):$/;"	m	class:contactSection
+adapt_contact	abook-query.py	/^def adapt_contact( contact ):$/;"	f
+add	abook-query.py	/^    def add(self, tag, value):$/;"	m	class:TSectionFields
+addContact	abook-query.py	/^    def addContact(self, contact):$/;"	m	class:addressBook
+addField	abook-query.py	/^    def addField(self, tag, value):$/;"	m	class:TContactSection
+addField	abook-query.py	/^    def addField(self, tag, value):$/;"	m	class:contactSection
+addRow	mab_query.py	/^def addRow (db, table, rowid, cells):$/;"	f
+addSection	abook-query.py	/^    def addSection(self, section):$/;"	m	class:contact
+addToDict	mab_query.py	/^def addToDict (dict, cells):$/;"	f
+addressBook	abook-query.py	/^class addressBook:$/;"	c
+archive	qsg.py	/^    def archive(self):$/;"	m	class:submitThread
+archive	qsubmit_gauss.sh	/^archive()$/;"	f
+autostart	notify.py	/^def autostart():$/;"	f
+checkACS	sdchecker.sh	/^checkACS()$/;"	f
+checkISI	sdchecker.sh	/^checkISI()$/;"	f
+checkJSTOR	sdchecker.sh	/^checkJSTOR()$/;"	f
+checkNature	sdchecker.sh	/^checkNature()$/;"	f
+checkProxy	sdchecker.sh	/^checkProxy()$/;"	f
+checkRSC	sdchecker.sh	/^checkRSC()$/;"	f
+checkSD	sdchecker.sh	/^checkSD()$/;"	f
+checkScience	sdchecker.sh	/^checkScience()$/;"	f
+checkThieme	sdchecker.sh	/^checkThieme()$/;"	f
+checkWiley	sdchecker.sh	/^checkWiley() $/;"	f
+cleaning	qsubmit_gauss.sh	/^cleaning()$/;"	f
+configure	qsubmit_gauss.sh	/^configure()$/;"	f
+contact	abook-query.py	/^class contact:$/;"	c
+contactSection	abook-query.py	/^class contactSection:$/;"	c
+convert	id3_convert.py	/^def convert(dry_run, lists):$/;"	f
+convertContact	abook-query.py	/^    def convertContact(self, contactString):$/;"	m	class:contact
+convertSection	abook-query.py	/^    def convertSection(self, sectionString):$/;"	m	class:contactSection
+convert_contact	abook-query.py	/^def convert_contact( string ):$/;"	f
+crossProduct	log-restart.py	/^    def crossProduct(self, v1, v2):$/;"	m	class:zMatrix
+decodeMorkValue	mab_query.py	/^def decodeMorkValue (value):$/;"	f
+delRow	mab_query.py	/^def delRow (db, table, rowid):$/;"	f
+detectWeb	zoreto/acs.js	/^function detectWeb(doc, url) {$/;"	f
+doBackup	sbackup.py	/^    def doBackup(self):$/;"	m	class:simpleBackup
+doPurge	sbackup.py	/^    def doPurge(self, join = False):$/;"	m	class:simpleBackup
+doTransfer	sbackup.py	/^    def doTransfer(self):$/;"	m	class:simpleBackup
+do_EOF	qsg.py	/^    def do_EOF(self, arg):$/;"	m	class:Interpreter
+do_EOF	rolo.py	/^    def do_EOF(self, line):$/;"	m	class:Rolodex
+do_add	rolo.py	/^    def do_add(self, name):$/;"	m	class:Rolodex
+do_add_server	qsg.py	/^    def do_add_server(self, server):$/;"	m	class:Interpreter
+do_find	rolo.py	/^    def do_find(self, name):$/;"	m	class:Rolodex
+do_kill	qsg.py	/^    def do_kill(self, server):$/;"	m	class:Interpreter
+do_list	rolo.py	/^    def do_list(self, line):        $/;"	m	class:Rolodex
+do_load	rolo.py	/^    def do_load(self, filename):$/;"	m	class:Rolodex
+do_queue	qsg.py	/^    def do_queue(self, arg):$/;"	m	class:Interpreter
+do_quit	qsg.py	/^    def do_quit(self, arg):$/;"	m	class:Interpreter
+do_save	rolo.py	/^    def do_save(self, filename):$/;"	m	class:Rolodex
+do_start	qsg.py	/^    def do_start(self, server):$/;"	m	class:Interpreter
+do_stop	qsg.py	/^    def do_stop(self, server):$/;"	m	class:Interpreter
+do_summary	qsg.py	/^    def do_summary(self, server):$/;"	m	class:Interpreter
+dotProduct	log-restart.py	/^    def dotProduct(self, v1, v2):$/;"	m	class:zMatrix
+dump	abook-query.py	/^    def dump(self):$/;"	m	class:addressBook
+dump	abook-query.py	/^    def dump(self):$/;"	m	class:contact
+dump	abook-query.py	/^    def dump(self):$/;"	m	class:contactSection
+escapeData	mab_query.py	/^def escapeData (match):$/;"	f
+filterMail	notify.py	/^def filterMail(lines):$/;"	f
+gaussian_log_parser	log-restart.py	/^class gaussian_log_parser:$/;"	c
+generate_filename	log-restart.py	/^def generate_filename(filename):$/;"	f
+getField	abook-query.py	/^    def getField(self, tag):$/;"	m	class:contactSection
+getFullName	abook-query.py	/^    def getFullName(self):$/;"	m	class:TContact
+getNickName	abook-query.py	/^    def getNickName(self):$/;"	m	class:TContact
+getNotes	abook-query.py	/^    def getNotes(self):$/;"	m	class:TContact
+getPrimEmail	abook-query.py	/^    def getPrimEmail(self):$/;"	m	class:TContact
+getRowIdScope	mab_query.py	/^def getRowIdScope (rowid, cdict):$/;"	f
+getpid	qsubmit_gauss.sh	/^getpid()$/;"	f
+getxyz	log-restart.py	/^    def getxyz(self, opt_step = -1):$/;"	m	class:gaussian_log_parser
+getxyz_str	log-restart.py	/^    def getxyz_str(self, opt_step = -1):$/;"	m	class:gaussian_log_parser
+help_EOF	rolo.py	/^    def help_EOF(self):$/;"	m	class:Rolodex
+help_add	rolo.py	/^    def help_add(self): $/;"	m	class:Rolodex
+help_find	rolo.py	/^    def help_find(self):$/;"	m	class:Rolodex
+help_list	rolo.py	/^    def help_list(self):$/;"	m	class:Rolodex
+help_load	rolo.py	/^    def help_load(self):$/;"	m	class:Rolodex
+help_save	rolo.py	/^    def help_save(self):$/;"	m	class:Rolodex
+hexcmp	mab_query.py	/^def hexcmp (x, y):$/;"	f
+importFromLdifFile	abook-query.py	/^    def importFromLdifFile(self, fileName):$/;"	m	class:addressBook
+indicator	sdchecker.sh	/^indicator()$/;"	f
+inputMork	mab_query.py	/^def inputMork (data):$/;"	f
+invertDict	mab_query.py	/^def invertDict (dict):$/;"	f
+isEmpty	abook-query.py	/^    def isEmpty(self):$/;"	m	class:contact
+isEmpty	abook-query.py	/^    def isEmpty(self):$/;"	m	class:contactSection
+jobcontrol	qsubmit_gauss.sh	/^jobcontrol()$/;"	f
+log_cmp	gaussian_sum.py	/^    def log_cmp(x, y):$/;"	f
+main	abook-query.py	/^def main (argv=None):$/;"	f
+main	gaussian_sum.py	/^def main (argv=None):$/;"	f
+main	mab_query.py	/^def main (argv=None):$/;"	f
+main	notify.py	/^def main():$/;"	f
+main	qsg.py	/^def main(argv = None):$/;"	f
+main	xvib.py	/^def main(argv = None):$/;"	f
+move2opt_step	log-restart.py	/^    def move2opt_step(self, opt_step = -1, strollsize = 10000):$/;"	m	class:gaussian_log_parser
+muttQuery	abook-query.py	/^    def muttQuery(self, queryString):$/;"	m	class:addressBook
+notify	notify.py	/^    def notify(self,text,event_type='Incoming Mail',timeout=10, path_to_image='gtk-dialog-info'):$/;"	m	class:NotifyMail
+notifyMail	notify.py	/^    def notifyMail(self, mail_from, mail_subject):$/;"	m	class:NotifyMail
+output2File	xvib.py	/^    def output2File(self, type = 'xyz', index = 1, scale = 0.5, frames = 10):$/;"	m	class:xvib
+outputMuttQuery	mab_query.py	/^def outputMuttQuery (db, query=[]):$/;"	f
+parseCmdline	xvib.py	/^def parseCmdline(argv):$/;"	f
+parseGassianLogFile	xvib.py	/^    def parseGassianLogFile(self, filename):$/;"	m	class:xvib
+queryDatabase	abook-query.py	/^    def queryDatabase(self, queryString):$/;"	m	class:addressBook
+queue	qsg.py	/^    def queue(self, dryrun = False):$/;"	m	class:submitThread
+queue	qsubmit_gauss.sh	/^queue()$/;"	f
+readDatabase	abook-query.py	/^    def readDatabase(self):$/;"	m	class:addressBook
+read_backwards	gaussian_sum.py	/^def read_backwards(fp, maxrounds = 5, sizehint = 20000):$/;"	f
+removeContact	abook-query.py	/^    def removeContact(self, contact):$/;"	m	class:addressBook
+removeField	abook-query.py	/^    def removeField(self, index):$/;"	m	class:contactSection
+removeSection	abook-query.py	/^    def removeSection(self, sectionName):$/;"	m	class:contact
+run	qsg.py	/^    def run(self):$/;"	m	class:submitThread
+safeEncode	notify.py	/^def safeEncode(string, encode):$/;"	f
+setFullName	abook-query.py	/^    def setFullName(self, fullname):$/;"	m	class:TContact
+setNickName	abook-query.py	/^    def setNickName(self, nickname):$/;"	m	class:TContact
+setNotes	abook-query.py	/^    def setNotes(self, notes):$/;"	m	class:TContact
+setPrimEmail	abook-query.py	/^    def setPrimEmail(self, email):$/;"	m	class:TContact
+simpleBackup	sbackup.py	/^class simpleBackup:$/;"	c
+status	qsg.py	/^    def status(self):$/;"	m	class:Interpreter
+submit	qsg.py	/^    def submit(self):$/;"	m	class:submitThread
+submit	qsubmit_gauss.sh	/^submit()$/;"	f
+submitThread	qsg.py	/^class submitThread(threading.Thread):$/;"	c
+summary	qsubmit_gauss.sh	/^summary()$/;"	f
+unescapeMork	mab_query.py	/^def unescapeMork (match):$/;"	f
+updateDBUSVar	notify.py	/^def updateDBUSVar():$/;"	f
+usage	abook-query.py	/^def usage():$/;"	f
+usage	gaussian_sum.py	/^def usage(program):$/;"	f
+usage	id3_convert.py	/^def usage():$/;"	f
+usage	mab_query.py	/^def usage ():$/;"	f
+usage	xvib.py	/^def usage(progname):$/;"	f
+walklog	gaussian_sum.py	/^def walklog(flog):$/;"	f
+writeDatabase	abook-query.py	/^    def writeDatabase(self):$/;"	m	class:addressBook
+xvib	xvib.py	/^class xvib:$/;"	c
+zMatrix	log-restart.py	/^class zMatrix:$/;"	c
