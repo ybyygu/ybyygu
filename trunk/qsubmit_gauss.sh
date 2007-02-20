@@ -1,7 +1,7 @@
 #!/bin/bash
 # VERSION: 1.0
 # Written by ybyygu at 2004
-# Last updated at 30-11-2006
+# Last updated at 2-20-2007
 
 #  What you need: screen, rsync and passwordless
 #+                ssh connection to the remote server
