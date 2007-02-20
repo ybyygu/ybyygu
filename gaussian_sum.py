@@ -14,15 +14,22 @@
 import sys
 from sys import stdin, stderr
 import os
-from os.path import expanduser, join, exists, isdir, isfile, basename
+from os.path import expanduser, join, exists, isdir, isfile, basename, dirname
 import glob
 from stat import *
 import time
+import re
 
-default_logfiles = glob.glob(expanduser("~/gjf/work/*.log"))
 LineLength = 72
 
-def SummaryGassianlogFromFiles(gaussian_log_files, output_steps, warn_old = False):
+def centerWithStr(str, char, length):
+    nl = (length - len(str))/2
+    if nl <= 0:
+        str = " ... %s" % str[length + 10:]
+        nl = (length - len(str))/2
+    return char * nl + str + char * nl
+
+def SummaryGassianlogFromFiles(gaussian_log_files, output_steps=8, show_all=False, warn_old=True):
     global LineLength
     
     def log_cmp(x, y):
@@ -39,19 +46,22 @@ def SummaryGassianlogFromFiles(gaussian_log_files, output_steps, warn_old = Fals
             print >>stderr, "Can't open %s to read!" %(log)
             continue
         hint = " %s " % basename(log)
-        print "[" + "="*((LineLength - len(hint))/2) + hint + "="*((LineLength - len(hint))/2) + "]"
-        if read_backwards(flog, output_steps):
-            print " " + ":"* LineLength
+        print "[" + centerWithStr(hint, '=', LineLength) + "]"
+        if not show_all:
+            if read_backwards(flog, output_steps):
+                print " " + ":"* LineLength
         walklog(flog)
         flog.close()
-        hint = " %s " % basename(log)
-        print "[" + "="*((LineLength - len(hint))/2) + hint + "="*((LineLength - len(hint))/2) + "]"
+        hint1 = " %s " % dirname(log)
+        hint2 = " %s " % basename(log)
+        print "[" + centerWithStr(hint1, '=', LineLength) + "]"
+        print "[" + centerWithStr(hint2, '=', LineLength) + "]"
 
         # check outdated log 
 
         span = (time.time() - os.stat(log)[ST_MTIME]) / 3600
         if warn_old and span > 4:
-            print " ** WARNING! THIS FILE HAS NO CHANGE MORE THAN %d H. **" % span
+            print " ** WARNING! THIS FILE HAS NO CHANGE MORE THAN %d HOURS. **" % span
 
 def SummaryGaussianlogFromStdin():
     return walklog(sys.stdin)
@@ -170,12 +180,12 @@ def read_backwards(fp, maxrounds = 5, sizehint = 20000):
         
 def usage(program):
     print 'Usage:'
+    print ' %s -h | --help' % program
+    print '   show this help screen.'
     print ' %s' % program
     print '   summary ~/gjf/work/*.log'
     print ' %s dir' % program
     print '   summary dir/*.log and dir/*.out'
-    print ' %s -h | --help' % program
-    print '   show this help screen.'
 
 
 #==========================================================================
@@ -187,48 +197,55 @@ def main (argv=None):
     if argv is None:  argv = sys.argv
     
     try:
-        opts, args = getopt.gnu_getopt(argv[1:], 'hin:', ['help', 'install', 'step='])
+        opts, args = getopt.gnu_getopt(argv[1:], 'hn:a', ['help', 'step=', 'showall'])
     except AttributeError:
         try:
-            opts, args = getopt.getopt(argv[1:], 'hin:', ['help', 'install', 'step='])
+            opts, args = getopt.getopt(argv[1:], 'hn:a', ['help', 'step=', 'showall'])
         except:
             print >>stderr, "Can't parse argument options."
             sys.exit(1)
    
-    output_steps = 5 
+    show_all = False 
+    output_steps = 8
     for o, a in opts:
         if o in ('-h', '--help'):
             usage(sys.argv[0])
-            sys.exit(0)
-        elif o in ('-i', '--install'):
-            if args:
-                for s in args:
-                    os.system("scp %s %s:%s/bin/" % (argv[0], s, os.getenv('HOME')))
-            else:
-                print "No sites specified."
             sys.exit(0)
         elif o in ('-n', '--step'):
             try:
                 output_steps = int(a)
             except:
-                output_steps = 5
+                pass
+        elif o in ('-a', '--showall'):
+            show_all = True
             
-
 # try to read from default gaussian output directory if no argv specified
+    logfiles = []
     if len(argv)==1:
-        SummaryGassianlogFromFiles(default_logfiles, output_steps, warn_old = True)
-        return 0
+        # figure out the most possible working log file
+
+        txt = os.popen('pgrep "g03"').read().strip()
+        if not txt:
+            txt = os.popen('pgrep "g98"').read().strip()
+        if not txt:
+            print "No working gaussian log file found."
+            sys.exit(0)
+        pids = txt.split('\n')
+        for pid in pids:
+            fenv = "/proc/" + pid + "/environ"
+            txt = open(fenv).read()
+            p = re.compile('\x00PWD=([^\x00]+)').search(txt)
+            if p:
+                work_dir = p.group(1)
+                logs = glob.glob(join(work_dir, "*.log"))
+                logfiles = logfiles + logs
 # try to read from stdin
-    elif argv[1] == '-':
-        SummaryGaussianlogFromStdin()
-        return 0
     elif args:
         if isdir(args[0]):
-            GaussianLogfiles = glob.glob(join(args[0], "*.log")) + glob.glob(join(args[0], "*.out"))
+            logfiles = glob.glob(join(args[0], "*.log")) + glob.glob(join(args[0], "*.out"))
         else:
-            GaussianLogfiles = args
-        SummaryGassianlogFromFiles(GaussianLogfiles, output_steps)
-        return 0
+            logfiles = args
+    SummaryGassianlogFromFiles(logfiles, output_steps = output_steps, show_all = show_all)
 
 if (__name__ == "__main__"):
     result = main()
