@@ -10,19 +10,96 @@
 #       LICENCE:  GPL version 2 or upper
 #       VERSION:  0.1
 #       CREATED:  28-9-2006
-#      REVISION:  ---
+#      REVISION:  13-4-2007
 #===============================================================================#
 import sys
 import cmd
 import os
 from os.path import expanduser, join, basename, exists, isdir, isfile
 import glob
+import re
 import threading
+
+#===============================================================================#
+#
+#  Functions
+#
+#===============================================================================#
+
+def detect_working_directory():
+    """
+    figure out the most possible working directory
+    """
+    pgrep = '/usr/bin/pgrep'
+
+    txt = os.popen('%s "g03"' % pgrep).read().strip()
+    if not txt:
+        txt = os.popen('%s "g98"' % pgrep).read().strip()
+    if not txt:
+        return None
+
+    pids = txt.split('\n')
+    for pid in pids:
+        fenv = "/proc/" + pid + "/environ"
+        txt = open(fenv).read()
+        p = re.compile('\x00PWD=([^\x00]+)').search(txt)
+        if p:
+            return p.group(1)
+        else:
+            return None
+
+def detect_log_files(directory):
+    """
+    figure out possible gaussian log files from directory
+    """
+    return glob.glob(join(directory, "*.log")) + glob.glob(join(directory, "*.out"))
+
+def sort_log_files(files):
+    """
+    sort log files by modify time
+    """
+    def log_cmp(x, y):
+        x = os.stat(x)[ST_MTIME]
+        y = os.stat(y)[ST_MTIME]
+        return cmp(x,y)
+
+    files.sort(log_cmp)
+
+
+def gaussian_summary(where = None):
+    """
+    Make a summary of the gaussian log file
+    """
+    files = []
+    ###
+    # if where is None, try to figure out the working one
+    #
+    if where == None:
+        dir = detect_working_directory()
+        if dir == None:
+            print "No working gaussian log file found."
+            return
+        else:
+            files = detect_working_directory()
+            if not files:
+                print "No log files found in your directory."
+                return
+            else:
+                sort_log_files(files)
+                for f in files:
+                    summary_log(f)
+
+        
+
+#===============================================================================#
+#
+#  Classes
+#
+#===============================================================================#
 
 class submitThread(threading.Thread):
     """\
     """
-
     remoteQueueServer = ''
     remoteArchiveServer = ''
 
@@ -39,7 +116,6 @@ class submitThread(threading.Thread):
         """\
         get queued gjf file from queue spool
         """
-        if remoteQueueServer == '':
         # get from local queue directory
             
     
@@ -51,7 +127,6 @@ class submitThread(threading.Thread):
     def submit(self):
         """\
         """
-         
 
 class Interpreter(cmd.Cmd):
     """
@@ -125,7 +200,6 @@ def main(argv = None):
     """
     """
     if argv == None: argv = sys.argv
-
 
     submit=submitThread('test')
     submit.run()

@@ -29,7 +29,7 @@ def centerWithStr(str, char, length):
         nl = (length - len(str))/2
     return char * nl + str + char * nl
 
-def SummaryGassianlogFromFiles(gaussian_log_files, output_steps=8, show_all=False, warn_old=True):
+def SummaryGassianlogFromFiles(gaussian_log_files, output_steps=8, show_all=False, warn_old=False):
     global LineLength
     
     def log_cmp(x, y):
@@ -196,6 +196,7 @@ def main (argv=None):
 
     if argv is None:  argv = sys.argv
     
+    # parse commandline options
     try:
         opts, args = getopt.gnu_getopt(argv[1:], 'hn:a', ['help', 'step=', 'showall'])
     except AttributeError:
@@ -207,6 +208,7 @@ def main (argv=None):
    
     show_all = False 
     output_steps = 8
+    warn_old = False
     for o, a in opts:
         if o in ('-h', '--help'):
             usage(sys.argv[0])
@@ -218,12 +220,12 @@ def main (argv=None):
                 pass
         elif o in ('-a', '--showall'):
             show_all = True
-            
-# try to read from default gaussian output directory if no argv specified
-    logfiles = []
-    if len(argv)==1:
-        # figure out the most possible working log file
 
+   # try to read from default gaussian output directory if no argv specified
+    logfiles = []
+    if not args:
+        warn_old = True
+        # figure out the most possible working log file
         txt = os.popen('pgrep "g03"').read().strip()
         if not txt:
             txt = os.popen('pgrep "g98"').read().strip()
@@ -239,13 +241,13 @@ def main (argv=None):
                 work_dir = p.group(1)
                 logs = glob.glob(join(work_dir, "*.log"))
                 logfiles = logfiles + logs
-# try to read from stdin
-    elif args:
-        if isdir(args[0]):
-            logfiles = glob.glob(join(args[0], "*.log")) + glob.glob(join(args[0], "*.out"))
-        else:
-            logfiles = args
-    SummaryGassianlogFromFiles(logfiles, output_steps = output_steps, show_all = show_all)
+    else:
+        for a in args:
+            if isdir(a):
+                logfiles = glob.glob(join(a, "*.log")) + glob.glob(join(a, "*.out"))
+            else:
+                logfiles.append(a)
+    SummaryGassianlogFromFiles(logfiles, output_steps = output_steps, show_all = show_all, warn_old = warn_old)
 
 if (__name__ == "__main__"):
     result = main()
