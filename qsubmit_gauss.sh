@@ -1,7 +1,7 @@
 #!/bin/bash
 # VERSION: 1.0
 # Written by ybyygu at 2004
-# Last updated at 2-20-2007
+# Last updated at 25-06-2007
 
 #  What you need: screen, rsync and passwordless
 #+                ssh connection to the remote server
@@ -19,14 +19,15 @@ export GJF_ROOT=$HOME/gjf${CODE:+_$CODE}
 export QUEUE_DIR=$GJF_ROOT/queue
 export WORK_DIR=$GJF_ROOT/work${CODE:+.`hostname`}
 export STATUS="$WORK_DIR/status"
+export DEBUG="$WORK_DIR/debug"
 export ARCHIVE_DIR=$GJF_ROOT/ARCHIVE
 export LOG=$ARCHIVE_DIR/qsubmit_gauss.log
 export SESSION_NAME=qsg${CODE:+-$CODE}
-export REGVAR=.regvar${CODE:+-$CODE}
+export REGVAR=$HOME/.regvar${CODE:+-$CODE}
 #------------------------------------------------------------------------
 
-if [[ -f ~/$REGVAR ]]; then
-   source ~/$REGVAR
+if [[ -f $REGVAR ]]; then
+   source $REGVAR
 else
    source ~/.regvar
 fi   
@@ -55,6 +56,7 @@ archive()
     echo >> $STATUS
     
     cp "$STATUS" $ARCHIVE_DIR/$state/$dir_name/ 
+    cp "$DEBUG" $ARCHIVE_DIR/$state/$dir_name/ 
     if [[ -z "$LOCAL" && -n "$REMOTE_ARCHIVE_DIR" ]] ; then
         scp -q "$remote_log" $ARCHIVE_DIR/
     fi
@@ -66,6 +68,11 @@ archive()
     fi
     
     if [[ -z "$LOCAL" && -n "$REMOTE_ARCHIVE_DIR" ]] ; then
+        # make remote directory to get rid of possible error when rsync transferring
+        # thank you, yan.
+        local archive_server="${REMOTE_ARCHIVE_DIR%:*}"
+        local archive_dir="${REMOTE_ARCHIVE_DIR#*:}"
+        ssh $archive_server "mkdir -p $arcive_dir"
         rsync -e ssh -a "$ARCHIVE_DIR/$state/$dir_name/" "$REMOTE_ARCHIVE_DIR/$state/$dir_name" && \
         rm -rf "$ARCHIVE_DIR/$state/$dir_name"
         scp -q "$LOG" "$remote_log"
@@ -139,8 +146,8 @@ cleaning()
 submit()
 {
     # restore the default settings
-    if [[ -f ~/$REGVAR ]]; then
-       source ~/$REGVAR
+    if [[ -f $REGVAR ]]; then
+       source $REGVAR
     else
        source ~/.regvar
     fi   
@@ -167,7 +174,7 @@ submit()
         #+ bland line in the end of the file, so I append one to it.
         (
           cd "$WORK_DIR"
-          sed -e 's/$//; $G' "$WORK_DIR/$GJF" | $GAUSSIAN_CMD &> "${GJF%.*}".log
+          sed -e 's/$//; $G' "$WORK_DIR/$GJF" | $GAUSSIAN_CMD > "${GJF%.*}".log 2> $DEBUG
         )
         
         # wait for a long time
@@ -183,12 +190,12 @@ submit()
 # setup environment
 configure()
 {
-    local groot="/gaussian"
+    local groot="/export/gaussian"
     local version=g03
     
     while true; do
         # question 0: where is your gaussian root directory?
-        echo -n "configure: Where is your g03/g98's root directory? (/gaussian) "
+        echo -n "configure: Where is your g03/g98's root directory? ($groot) "
         read answer
         if [[ "$answer" != "" ]]; then
             groot="$answer"
@@ -197,7 +204,7 @@ configure()
         if [[ -d "$groot/g03" && -d "$answer/g98" ]]; then
         # wait for your choice.
             while true; do
-                echo -n "configure: choose your gaussian version (g03)? "
+                echo -n "configure: choose your gaussian version ($version)? "
                 read answer
                 if [[ "$answer" == "" || "$answer" == "g03" ]]; then
                     break
@@ -231,13 +238,14 @@ configure()
     done
 
     # question 1: where is your gaussian scratch directory? 
-    local gscratch="/tmp"
+    local gscratch="/export/scratch"
     if [[ -d "$groot/scratch" ]]; then
         gscratch="$groot/scratch"
     fi
 
     while true; do
-        echo -n "configure: Where your gaussian scratch diretory? ($gscratch) "
+        echo "configure: Where your gaussian scratch diretory? ($gscratch) "
+        echo -n "TIPS: If you want to enable TCP Linda, please make scratch directory visible to every nodes."
         read answer
         if [[ "$answer" == "" ]]; then
             break;
@@ -284,7 +292,7 @@ configure()
                 remote_server="$answer"
                 break
             else
-                echo -n "configure: Your input is invalid, do you want to try again? (Y/n) " 
+                echo -n "configure: Your input is invalid. Do you want to try again? (Y/n) " 
                 read answer
                 if [[ "$answer" != "" && "$answer" != "y" && "$answer" != "Y" ]]; then
                     break
@@ -295,16 +303,15 @@ configure()
 
     # show dump
     echo "configure: Please check below lines exactly match your need."
-    echo "configure: If not, configurate again or edit ~/$REGVAR directly by yourself."
+    echo "configure: If not, configurate again or edit $REGVAR directly by yourself."
     echo "------------------------------------------------------------"
-    echo "export ${version}root=$groot" | tee ~/$REGVAR
-    echo "export GAUSS_SCRDIR=$gscratch" | tee -a ~/$REGVAR
-    echo "source $groot/$version/bsd/$version.profile" |tee -a ~/$REGVAR
-    echo "export GAUSSIAN_CMD=$version" | tee -a ~/$REGVAR
+    echo "export ${version}root=$groot" | tee $REGVAR
+    echo "export GAUSS_SCRDIR=$gscratch" | tee -a $REGVAR
+    echo "export GAUSSIAN_CMD=$version" | tee -a $REGVAR
 
     if [[ "$remote_server" != "" ]]; then
-        echo "export REMOTE_QUEUE_DIR=$remote_server:$QUEUE_DIR" | tee -a ~/$REGVAR
-        echo "export REMOTE_ARCHIVE_DIR=$remote_server:$ARCHIVE_DIR" | tee -a ~/$REGVAR
+        echo "export REMOTE_QUEUE_DIR=$remote_server:$QUEUE_DIR" | tee -a $REGVAR
+        echo "export REMOTE_ARCHIVE_DIR=$remote_server:$ARCHIVE_DIR" | tee -a $REGVAR
     fi
     echo "------------------------------------------------------------"
 
@@ -315,8 +322,8 @@ configure()
 # summary log file
 summary()
 {
-    if [[ -f ~/bin/gaussian_sum.py ]]; then
-        ~/bin/gaussian_sum.py $1
+    if [[ -n "$(gaussian_sum.py)" ]]; then
+        gaussian_sum.py $1
     else
         egrep 'STEP|Step|step|m D|S     D|m F|S     F|TOTAL E|Linear|Angle b|#|DONE|Energy=|MM Force|SCF Done' $1
     fi
@@ -443,7 +450,7 @@ jobcontrol()
 }
 
 # main #
-if [[ ! -f ~/$REGVAR ]]; then
+if [[ ! -f $REGVAR ]]; then
     echo "Before use this command, you need answer a few questions."
     configure
     echo "Now, you can run this command again."
@@ -483,17 +490,37 @@ elif [[ $# == 1 ]]; then
         echo "  --install site1 site2 ... : install this script into home-bin directories of remote sites using scp command."
         echo "  --test: simply sibmit the job and over. no queue, no archive"
         echo "  --local: use local queue only, even a remote site specified in .regvar file."
+        echo "  --nodelist node1 node2 ...: enable TCP Linda on node1, node2 etc."
         exit 0
     else
         CODE=$1
     fi
 elif [[ "$1" == "--install" ]]; then
-        shift 1
-        for site in $*; do
-            scp "$0" "$site:$HOME/bin/"
-        done
-        exit 0
+    shift 1
+    for site in $*; do
+        scp "$0" "$site:$HOME/bin/"
+    done
+    exit 0
+elif [[ "$1" == "--nodelist" ]]; then
+    shift 1
+    echo "TCP Linda will be enabled among nodes: $*."
+    echo "If encount error, please google \"g03 linda\" for more information."
 
+    export GAUSS_LFLAGS="-opt 'Tsnet.Node.lindarsharg: ssh' -vv -nodelist '$*'"
+fi
+
+# restore the default settings
+if [[ -f $REGVAR ]]; then
+   source $REGVAR
+else
+   source ~/.regvar
+fi
+# set up runtime environment
+source $g03root/$GAUSSIAN_CMD/bsd/$GAUSSIAN_CMD.profile
+if [[ -n "$GAUSS_LFLAGS" ]]; then
+    echo "Set up Linda runtime enviroment..."
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$g03root/g03/linda7.1/intel-linux2.4/lib
+    export GAUSS_EXEDIR=$g03root/g03/linda-exe:$GAUSS_EXEDIR
 fi
 
 # do real work
