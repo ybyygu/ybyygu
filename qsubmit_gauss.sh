@@ -1,12 +1,14 @@
 #!/bin/bash
 # VERSION: 1.0
 # Written by ybyygu at 2004
-# Last updated at 25-06-2007
+# Last updated at 2007-07-18
 
 #  What you need: screen, rsync and passwordless
 #+                ssh connection to the remote server
 
+# setup environment
 export LANG=C
+umask 0002   # respect group privilege
 
 if [[ $# == 1 ]]; then
     if [[ "${1:0:1}" != "+" && "${1:0:1}" != "-" ]]; then
@@ -156,7 +158,7 @@ submit()
     export GAUSS_SCRDIR=$GAUSS_SCRDIR/$(hostname)
 
     if  [[ ! -d "$GAUSS_SCRDIR" ]]; then
-        mkdir -p "$GAUSS_SCRDIR"
+        mkdir -m 777 -p "$GAUSS_SCRDIR"
     else
         cleaning
     fi
@@ -255,7 +257,7 @@ configure()
                 echo -n "configure: You specify an nonexistent directory, would I make it for you? (Y/n)"
                 read answer
                 if [[ "$answer" == "" || "$answer" == "Y" || "$answer" == "y" ]]; then
-                    mkdir -p "$gscratch" || echo "configure: Can't make $gscratch for you. aborting..." && return 1
+                    mkdir -m 777 -p "$gscratch" || echo "configure: Can't make $gscratch for you. aborting..." && return 1
                     break
                 else
                     echo -n "configure: Retry to input scratch? (Y/n)"
