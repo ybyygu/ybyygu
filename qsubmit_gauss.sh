@@ -1,10 +1,17 @@
-#!/bin/bash
-# VERSION: 1.0
-# Written by ybyygu at 2004
-# Last updated at 2007-07-18
-
-#  What you need: screen, rsync and passwordless
-#+                ssh connection to the remote server
+#!/usr/bin/env bash
+#===============================================================================#
+#   DESCRIPTION: qsubmit_gauss.sh
+# 
+#       OPTIONS:  ---
+#  REQUIREMENTS:  screen, rsync, passwordless ssh connectoin to remote server(
+#                 Remote queue and remote archive)
+#         NOTES:  ---
+#        AUTHOR:  Wenping Guo (ybyygu)
+#         EMAIL:  win.png@gmail.com
+#       VERSION:  1.4
+#       CREATED:  2004-12-21
+#       UPDATED:  2007-08-04 18:08
+#===============================================================================#
 
 # setup environment
 export LANG=C
@@ -30,8 +37,6 @@ export REGVAR=$HOME/.regvar${CODE:+-$CODE}
 
 if [[ -f $REGVAR ]]; then
    source $REGVAR
-else
-   source ~/.regvar
 fi   
 
 archive()
@@ -59,7 +64,7 @@ archive()
     
     cp "$STATUS" $ARCHIVE_DIR/$state/$dir_name/ 
     cp "$DEBUG" $ARCHIVE_DIR/$state/$dir_name/ 
-    if [[ -z "$LOCAL" && -n "$REMOTE_ARCHIVE_DIR" ]] ; then
+    if [[ -n "$REMOTE_ARCHIVE_DIR" ]] ; then
         scp -q "$remote_log" $ARCHIVE_DIR/
     fi
 
@@ -69,8 +74,8 @@ archive()
         rm -f $STATUS
     fi
     
-    if [[ -z "$LOCAL" && -n "$REMOTE_ARCHIVE_DIR" ]] ; then
-        # make remote directory to get rid of possible error when rsync transferring
+    if [[ -n "$REMOTE_ARCHIVE_DIR" ]] ; then
+        # make remote directory in order to get rid of possible error when rsync transferring
         # thank you, yan.
         local archive_server="${REMOTE_ARCHIVE_DIR%:*}"
         local archive_dir="${REMOTE_ARCHIVE_DIR#*:}"
@@ -84,7 +89,7 @@ archive()
 }
 
 #  pop a gjf file from queue
-#+ use the global variable *GJF* to get it
+#+ use the global variable *GJF* to bind it
 queue()
 {   
     # close standard error output
@@ -93,7 +98,7 @@ queue()
     mkdir -p $QUEUE_DIR
     mkdir -p $WORK_DIR
     
-    if [[ -z "$LOCAL" && -n "$REMOTE_QUEUE_DIR" ]]; then
+    if [[ -n "$REMOTE_QUEUE_DIR" ]]; then
         local queue_server="${REMOTE_QUEUE_DIR%:*}"
         local queue_dir="${REMOTE_QUEUE_DIR#*:}"
     fi
@@ -105,10 +110,14 @@ queue()
             GJF=$(ssh $queue_server "(cd $queue_dir && ls *.gjf *.com) | head -n 1")
 
             if [[ "$GJF" != '' ]]; then
-                scp -q "$REMOTE_QUEUE_DIR/\"$GJF\"" $WORK_DIR/ && \
-                # not a test, so delete remote file
-                [[ "$1" != 'dryrun' ]] && ssh $queue_server "rm -f \"$queue_dir/$GJF\""
-                echo "queue: get $GJF from $queue_server"
+            	echo "queue: get $GJF from $queue_server"
+            	if [[ "$1" != 'dryrun' ]]; then
+            		# not a test, so delete remote file 
+					scp -q "$REMOTE_QUEUE_DIR/\"$GJF\"" $WORK_DIR/ \
+					&& ssh $queue_server "rm -f \"$queue_dir/$GJF\""
+				else
+					return 0
+                fi
             else
                 echo 'queue: remote queue is empty.'
                 return 1
@@ -117,22 +126,14 @@ queue()
             echo 'queue: local queue is empty.'
             return 1
         fi 
-    elif [[ -z "$LOCAL" && -n "$REMOTE_QUEUE_DIR"  ]]; then
+    elif [[ -n "$REMOTE_QUEUE_DIR"  ]]; then
         echo "queue: Local queue is not empty. I found $GJF."
         echo "queue: I will process local queue firstly."
-
-        # not a test
-        if [[ "$1" != 'dryrun' ]]; then
-            mv "$QUEUE_DIR/$GJF" "$WORK_DIR/"
-        fi
-    else
-        # do the same thing as before
-        echo "queue: get $GJF from $QUEUE_DIR"
-        if [[ "$1" != 'dryrun' ]]; then
-            mv "$QUEUE_DIR/$GJF" "$WORK_DIR/"
-        fi
     fi
-    
+	# not a test
+	if [[ "$1" != 'dryrun' ]]; then
+		mv "$QUEUE_DIR/$GJF" "$WORK_DIR/"
+	fi    
     return 0
 }
 
@@ -150,12 +151,10 @@ submit()
     # restore the default settings
     if [[ -f $REGVAR ]]; then
        source $REGVAR
-    else
-       source ~/.regvar
     fi   
 
     #+ use a local scratch directory
-    export GAUSS_SCRDIR=$GAUSS_SCRDIR/$(hostname)
+    export GAUSS_SCRDIR=$GAUSS_SCRDIR/$(hostname)${CODE:+-$CODE}
 
     if  [[ ! -d "$GAUSS_SCRDIR" ]]; then
         mkdir -m 777 -p "$GAUSS_SCRDIR"
@@ -164,7 +163,7 @@ submit()
     fi
 
     if ! queue; then
-        echo "submit: No more jobs, I will exit now."
+        echo "submit: No more queued jobs, I will exit now."
         return 0
     else
         mkdir -p "$WORK_DIR"
@@ -197,6 +196,13 @@ configure()
     
     while true; do
         # question 0: where is your gaussian root directory?
+        if [[ -n "$g03root" ]]; then
+            groot=$g03root
+            version=g03
+        elif [[ -n "$g98root" ]]; then
+            groot=$g98root
+            version=g98
+        fi
         echo -n "configure: Where is your g03/g98's root directory? ($groot) "
         read answer
         if [[ "$answer" != "" ]]; then
@@ -241,12 +247,16 @@ configure()
 
     # question 1: where is your gaussian scratch directory? 
     local gscratch="/export/scratch"
-    if [[ -d "$groot/scratch" ]]; then
+    if [[ -n "$GAUSS_SCRDIR" ]]; then
+        gscratch=$GAUSS_SCRDIR
+    elif [[ -d "$groot/scratch" ]]; then
         gscratch="$groot/scratch"
+    else
+        gscratch="/tmp"
     fi
 
     while true; do
-        echo "configure: Where your gaussian scratch diretory? ($gscratch) "
+        echo "configure: Where is your gaussian scratch diretory? ($gscratch) "
         echo -n "TIPS: If you want to enable TCP Linda, please make scratch directory visible to every nodes."
         read answer
         if [[ "$answer" == "" ]]; then
@@ -276,7 +286,7 @@ configure()
     # final test:
     if [[ ! -f $groot/$version/bsd/$version.profile ]]; then
         echo "configure: I can't find \"$groot/$version/bsd/$version.profile\". Did your gaussian install correctly? "
-        echo "configure: Failed to configurate your gaussian enviroment."
+        echo "configure: Failed to setup your gaussian enviroment."
         return 2
     fi
     
@@ -303,9 +313,9 @@ configure()
         done
     fi
 
-    # show dump
-    echo "configure: Please check below lines exactly match your need."
-    echo "configure: If not, configurate again or edit $REGVAR directly by yourself."
+    # dump configuration
+    echo "configure: Please make sure below lines exactly match your need."
+    echo "configure: If not, configure again or edit $REGVAR directly by yourself."
     echo "------------------------------------------------------------"
     echo "export ${version}root=$groot" | tee $REGVAR
     echo "export GAUSS_SCRDIR=$gscratch" | tee -a $REGVAR
@@ -324,32 +334,70 @@ configure()
 # summary log file
 summary()
 {
-    if [[ -n "$(gaussian_sum.py)" ]]; then
-        gaussian_sum.py $1
-    else
-        egrep 'STEP|Step|step|m D|S     D|m F|S     F|TOTAL E|Linear|Angle b|#|DONE|Energy=|MM Force|SCF Done' $1
-    fi
+    egrep 'STEP|Step|step|m D|S     D|m F|S     F|TOTAL E|Linear|Angle b|#|DONE|Energy=|MM Force|SCF Done' $1
 }
 
-# use *PID* to get the process id
+# send gaussian with STOP or CONT signal
+signal_gauss()
+{
+    pid_gauss=$(/usr/bin/pgrep 'g03|g98')
+    if ! getpid; then
+        echo $pid_gauss
+        return 1
+    fi
+    # guess if pid_gauss is contained by screen session
+    echo " Waiting..."
+    for pid in $pid_gauss; do
+        # use echo to eliminate blank space from command output
+        sid=$(echo `ps -o sid= $pid`)
+        if [[ "$sid" == "$SID" ]]; then
+            gpid=$(/usr/bin/pgrep -P $pid)
+            while [[ "$gpid" != "" ]]; do
+                if [[ "$1" == "-STOP" || "$1" == "-CONT" ]]; then
+                    /bin/kill $1 $gpid
+                else
+                    return 1
+                fi
+                gpid=$(/usr/bin/pgrep -P $gpid)
+            done
+            # one is enough 
+            break
+        fi
+    done
+
+}
+
+# use *SID* to get the screen session id
 getpid()
 {
     PID=$(screen -list | grep ".$SESSION_NAME[^\w-]" | tail -n 1)
     PID=${PID%.$SESSION_NAME*}
     [[ "$PID" == "" ]] && return 1
-    # the whole session id
+    # the whole session id is the sub process of screen program
     SID=$(/usr/bin/pgrep -P $PID)
     [[ "$SID" == "" ]] && return 1
     # the l*.exe, eg. l502.exe
-    GID=$(/bin/ps -s "$SID" -o pid | tail -n 1)
-    
-    return 0
+    LID=$(/usr/bin/pgrep "l*.exe")
+    if [[ "$LID" == "" ]]; then
+    	return 1
+    fi
+    for id in $LID; do
+    	sid=$(echo `/bin/ps -o sid= $id`)
+    	if [[ "$sid" == "$SID" ]]; then
+    	    GID=$id
+            return 0
+    	fi
+    done
+
+    return 1
 }
 
 jobcontrol()
 {
-    echo "jobcontrol: Please enter help to show available command, and enter quit or q to exit."
-    echo -n "jobcontrol: "
+    local PS="jc>> "
+    echo "Enter into jobcontrol mode..."
+    echo "${PS}Please enter help to show available command, and enter quit or q to exit."
+    echo -n "$PS"
 
     local answer check
     while true; do
@@ -357,103 +405,72 @@ jobcontrol()
             echo "queue was terminated. exit ..."
             break 
         fi
-        
+        status=$(ps -o stat= "$GID" | grep 'T')
+        if [[ "$status" != "" ]]; then
+            echo "Job was paused, please enter continue to resume it."
+            echo -n "$PS"
+        fi
         read answer
         # test answer
         if [[ "$answer" == "help" ]]; then
-            echo "available command: pause, continue, kill, terminate, summary, queue, status, log, top, clear"
-            echo -n "jobcontrol: "
+            echo "available command: pause, continue, kill, terminate, summary, log, top, clear"
+            echo -n "$PS"
         elif [[ "$answer" == "pause" ]]; then
-            kill -STOP $GID
-            echo "Current job was paused, and enter continue to resume it." 
-            echo -n "jobcontrol: "
+            signal_gauss -STOP
+            echo -n "$PS"
         elif [[ "$answer" == "continue" || "$answer" == "resume" ]]; then
-            kill -CONT $GID && echo -n "jobcontrol: "
+            signal_gauss -CONT
+            echo "Job was resumed, and use top to check."
+            echo -n "$PS"
         elif [[ "$answer" == "kill" ]]; then
-            echo -n "jobcontrol: Are you really want to kill current job? (y/N) "
+            echo -n "${PS}Are you really want to kill current job? Queued jobs will be continued. (y/N) "
             read answer
             if [[ "$answer" == "y" ]]; then
                 kill $GID 
-                echo "jobcontrol: Current job has been killed."
-                echo -n "jobcontrol: "
+                echo "${PS}Current job has been killed."
+                echo -n "$PS"
             else
-                echo -n "jobcontrol: "
+                echo -n "$PS"
             fi
         elif [[ "$answer" == "terminate" ]]; then
-            echo -n "jobcontrol: Are you really want to terminate current queue? (y/N) "
+            echo -n "${PS}Are you really want to terminate current queue? (y/N) "
             read answer
             if [[ "$answer" == "y" ]]; then
-                (kill $PID; kill $GID) && echo "jobcontrol: Queue has been terminated. exiting..." && break
+                (kill $PID; kill $GID) && echo "${PS}Queue has been terminated. exiting..." && break
             else
-                echo -n "jobcontrol: "
+                echo -n "$PS"
             fi
-        elif [[ "$answer" == "queue" || "$answer" == "ls" ]]; then
-            local files=$(ls $QUEUE_DIR/{*.gjf,*.com} 2>/dev/null)
-            if [[ "$files" == "" ]]; then
-                echo "  none"
-            else
-                for f in $files; do
-                    echo "  `basename $f`"
-                done
-            fi
-
-            echo -n "jobcontrol: "
-        elif [[ "$answer" == "status" ]]; then
-            local files=$(ls $WORK_DIR/*.gjf 2>/dev/null)
-            if [[ "$files" == "" ]]; then
-                echo "  none"
-            else
-                for f in "$files"; do
-                    echo -n "`basename \"$f\"`: "
-                    break
-                done
-            fi
-            
-            local check=$(ps -o stat $GID|wc -l)
-            if [[ "$check" -ne 2 ]]; then
-                echo "You should not see this."
-                break;
-            fi
-
-            check=$(ps -o stat $GID | tail -n 1 |grep 'T')
-            if [[ "$check" != "" ]]; then
-                echo "  [paused]"
-            else
-                echo "  [running]"
-            fi
-
-            echo -n "jobcontrol: "
         elif [[ "$answer" == "summary" ]]; then
             echo -n "Summary current running job. Press enter to begin and q to exit pager."
             local temp
             read -s temp
             echo
             summary $WORK_DIR/*.log | less
-            echo -n "jobcontrol: "
+            echo -n "$PS"
         elif [[ "$answer" == "log" ]]; then
             echo -n "Show `basename $LOG` content. Press enter to begin and q to exit pager."
             local temp
             read -s temp
             echo
             cat $LOG | less
-            echo -n "jobcontrol: "
+            echo -n "$PS"
         elif [[ "$answer" == "top" ]]; then
             top
-            echo -n "jobcontrol: "
+            echo -n "$PS"
         elif [[ "$answer" == "clear" || "$answer" == "c" ]]; then
             clear
-            echo -n "jobcontrol: "
+            echo -n "$PS"
         elif [[ "$answer" == "exit" || "$answer" == "quit" || "$answer" == "q" ]]; then
             break
         else
-            echo -n "jobcontrol: "
+            echo -n "$PS"
         fi
     done
 }
 
 # main #
 if [[ ! -f $REGVAR ]]; then
-    echo "Before use this command, you need answer a few questions."
+    echo "Before use this command, you need answer a few questions. Press Ctrl+C to abort."
     configure
     echo "Now, you can run this command again."
     exit 0
@@ -491,7 +508,7 @@ elif [[ $# == 1 ]]; then
         echo "  --configure: configure the environment."
         echo "  --install site1 site2 ... : install this script into home-bin directories of remote sites using scp command."
         echo "  --test: simply sibmit the job and over. no queue, no archive"
-        echo "  --local: use local queue only, even a remote site specified in .regvar file."
+        echo "  --local: use local queue only, even when a remote site specified in .regvar file."
         echo "  --nodelist node1 node2 ...: enable TCP Linda on node1, node2 etc."
         exit 0
     else
@@ -514,8 +531,6 @@ fi
 # restore the default settings
 if [[ -f $REGVAR ]]; then
    source $REGVAR
-else
-   source ~/.regvar
 fi
 # set up runtime environment
 source $g03root/$GAUSSIAN_CMD/bsd/$GAUSSIAN_CMD.profile
@@ -545,7 +560,6 @@ if ! getpid; then
         echo "Please wait ..."
         sleep 2
         echo "your GJF_ROOT is $GJF_ROOT."
-        echo "Enter jobcontrol mode ..."
         $0 +job
     else
         exit 0

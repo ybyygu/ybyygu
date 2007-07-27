@@ -303,7 +303,7 @@ else:
 #
 # TODO: combile with gaussian_log_parser class
 
-fp = open(log)
+fp = open(log, "rb")
 
 # read the last line and do a test
 fp.seek(-100, 2)
@@ -314,7 +314,7 @@ line = fp.readlines()[-1]
 #    1          8             0       -0.453584   -3.860986    5.501901
 key = 'Standard orientation:'
 rex_xyz = re.compile(r'^\s*\d+\s+\d+\s+\d+\s+([-0-9.]+\s+[-0-9.]+\s+[-0-9.]+)$')
-round = False  #  True : use the next to last the position of the key
+round = False  #  True : use the next to last position of the key
                #  False: use the last position of the key
 
 if rex_xyz.match(line.strip()):
@@ -342,7 +342,7 @@ while fp.tell() != 0:   # should not be the begin of the file
 fp.seek(pos, 0)
 
 line = fp.readline()
-# deal with the big strollsize, which may catain more than one standard orientation entries
+# deal with the big strollsize which may contain more than one standard orientation entries
 if round:
     line = fp.readline()
     while line:
@@ -361,14 +361,13 @@ while rex_xyz.match(line.strip()):
     line = fp.readline()
 fp.close()
 
-
 ###
 # now process the gjf file
 #
 txt = open(gjf).read().replace('\r', '')
 sections = txt.split('\n\n')
 
-# the atoms from out file should be same as from gjf file
+# the atoms from out file should be same as the one from gjf file
 # TODO: to compare the atom symbol is safer
 lines = sections[2].split('\n')
 if len(lines[1:]) != len(mol.atoms):
