@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: UTF-8 -*-
 #===============================================================================#
-#   DESCRIPTION:  
+#   DESCRIPTION:  extract the most important informations from gaussian log files 
 # 
 #  REQUIREMENTS:  python
 #         NOTES:  ---
@@ -9,7 +9,7 @@
 #       LICENCE:  GPL version 2 or upper
 #       VERSION:  0.1
 #       CREATED:  2006-8-30 
-#      REVISION:  2006-11-30
+#      REVISION:  2007-07-23
 #===============================================================================#
 import sys
 from sys import stdin, stderr
@@ -41,7 +41,7 @@ def SummaryGassianlogFromFiles(gaussian_log_files, output_steps=8, show_all=Fals
 
     for log in gaussian_log_files:
         try:
-            flog = open(log, 'r')
+            flog = open(log, 'rb')
         except IOError:
             print >>stderr, "Can't open %s to read!" %(log)
             continue
@@ -205,7 +205,6 @@ def main (argv=None):
         except:
             print >>stderr, "Can't parse argument options."
             sys.exit(1)
-   
     show_all = False 
     output_steps = 8
     warn_old = False
@@ -220,7 +219,6 @@ def main (argv=None):
                 pass
         elif o in ('-a', '--showall'):
             show_all = True
-
    # try to read from default gaussian output directory if no argv specified
     logfiles = []
     if not args:
@@ -253,3 +251,4 @@ if (__name__ == "__main__"):
     result = main()
     # Comment the next line to use the debugger
     sys.exit(result)
+
