@@ -5,12 +5,16 @@
 # 
 #  REQUIREMENTS:  python
 #         NOTES:  ---
-#        AUTHOR:  ybyygu 
+#        AUTHOR:  win.png@gmail.com (ybyygu) 
 #       LICENCE:  GPL version 2 or upper
-#       VERSION:  0.1
+#       VERSION:  0.3
 #       CREATED:  2006-8-30 
-#      REVISION:  2007-07-23
+#      REVISION:  2007-07-29 12:40
 #===============================================================================#
+
+###
+# importing
+#
 import sys
 from sys import stdin, stderr
 import os
@@ -20,8 +24,14 @@ from stat import *
 import time
 import re
 
+###
+# constants
+#
 LineLength = 72
 
+###
+# functions
+#
 def centerWithStr(str, char, length):
     nl = (length - len(str))/2
     if nl <= 0:
@@ -72,7 +82,7 @@ def walklog(flog):
     global LineLength
     line = flog.readline()
     freq_count = 0
-# gaussian log file begins with a space
+    # gaussian log file begins with a space
     if not line or not line[0] == ' ':
         print ' ' + '*'*LineLength
         print ' this is not a gaussian log file...'
@@ -95,7 +105,7 @@ def walklog(flog):
             print  ' ' + '-'*LineLength
         elif line.find("Number of steps in this run=") >= 0:
             print line,
-# print SCF information and the next two lines
+        # print SCF information and the next two lines
         elif line.find("SCF Done") >= 0:
             print line,
             for i in range(2):
@@ -106,19 +116,19 @@ def walklog(flog):
             print line,
         elif line.find("exceeded") >= 0:
             print line,
-# print energy 
+        # print energy 
         elif line.find('energy =') >=0:
             print line,
         elif re.compile(r'^ Cycle ').match(line):
             print line,
         elif re.compile(r'^ E=').match(line):
             print line,
-# print the first line of Eigenvalues
+        # print the first line of Eigenvalues
         elif line.find("Eigenvalues ---") >= 0:
             print line,
             while line and line.find("Eigenvalues ---") >=0:
                 line = flog.readline()
-# print converged information
+        # print converged information
         elif line.find("Converged?") >= 0:
             print " " + '-'*LineLength
             print line, 
@@ -175,7 +185,6 @@ def read_backwards(fp, maxrounds = 5, sizehint = 20000):
             return False
         else:
             continue
-
     return True
         
 def usage(program):
@@ -186,7 +195,6 @@ def usage(program):
     print '   summary ~/gjf/work/*.log'
     print ' %s dir' % program
     print '   summary dir/*.log and dir/*.out'
-
 
 #==========================================================================
 # MAIN PROGRAM
@@ -224,9 +232,7 @@ def main (argv=None):
     if not args:
         warn_old = True
         # figure out the most possible working log file
-        txt = os.popen('pgrep "g03"').read().strip()
-        if not txt:
-            txt = os.popen('pgrep "g98"').read().strip()
+        txt = os.popen('/usr/bin/pgrep -u $USER "g03|g98"').read().strip()
         if not txt:
             print "No working gaussian log file found."
             sys.exit(0)
@@ -249,6 +255,5 @@ def main (argv=None):
 
 if (__name__ == "__main__"):
     result = main()
-    # Comment the next line to use the debugger
     sys.exit(result)
 
