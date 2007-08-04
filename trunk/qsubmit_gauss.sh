@@ -8,9 +8,9 @@
 #         NOTES:  ---
 #        AUTHOR:  Wenping Guo (ybyygu)
 #         EMAIL:  win.png@gmail.com
-#       VERSION:  1.2
+#       VERSION:  1.4
 #       CREATED:  2004-12-21
-#       UPDATED:  2007-07-29 12:31
+#       UPDATED:  2007-08-04 18:08
 #===============================================================================#
 
 # setup environment
@@ -256,7 +256,7 @@ configure()
     fi
 
     while true; do
-        echo "configure: Where your gaussian scratch diretory? ($gscratch) "
+        echo "configure: Where is your gaussian scratch diretory? ($gscratch) "
         echo -n "TIPS: If you want to enable TCP Linda, please make scratch directory visible to every nodes."
         read answer
         if [[ "$answer" == "" ]]; then
@@ -314,8 +314,8 @@ configure()
     fi
 
     # dump configuration
-    echo "configure: Please check below lines exactly match your need."
-    echo "configure: If not, configurate again or edit $REGVAR directly by yourself."
+    echo "configure: Please make sure below lines exactly match your need."
+    echo "configure: If not, configure again or edit $REGVAR directly by yourself."
     echo "------------------------------------------------------------"
     echo "export ${version}root=$groot" | tee $REGVAR
     echo "export GAUSS_SCRDIR=$gscratch" | tee -a $REGVAR
@@ -342,12 +342,14 @@ signal_gauss()
 {
     pid_gauss=$(/usr/bin/pgrep 'g03|g98')
     if ! getpid; then
+        echo $pid_gauss
         return 1
     fi
     # guess if pid_gauss is contained by screen session
     echo " Waiting..."
     for pid in $pid_gauss; do
-        sid=$(ps -o sid= $pid)
+        # use echo to eliminate blank space from command output
+        sid=$(echo `ps -o sid= $pid`)
         if [[ "$sid" == "$SID" ]]; then
             gpid=$(/usr/bin/pgrep -P $pid)
             while [[ "$gpid" != "" ]]; do
@@ -375,9 +377,19 @@ getpid()
     SID=$(/usr/bin/pgrep -P $PID)
     [[ "$SID" == "" ]] && return 1
     # the l*.exe, eg. l502.exe
-    GID=$(/bin/ps -s "$SID" -o pid | tail -n 1)
+    LID=$(/usr/bin/pgrep "l*.exe")
+    if [[ "$LID" == "" ]]; then
+    	return 1
+    fi
+    for id in $LID; do
+    	sid=$(echo `/bin/ps -o sid= $id`)
+    	if [[ "$sid" == "$SID" ]]; then
+    	    GID=$id
+            return 0
+    	fi
+    done
 
-    return 0
+    return 1
 }
 
 jobcontrol()
@@ -393,7 +405,7 @@ jobcontrol()
             echo "queue was terminated. exit ..."
             break 
         fi
-        status=$(ps -o stat= $GID | grep 'T')
+        status=$(ps -o stat= "$GID" | grep 'T')
         if [[ "$status" != "" ]]; then
             echo "Job was paused, please enter continue to resume it."
             echo -n "$PS"

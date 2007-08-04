@@ -7,14 +7,16 @@
 #         NOTES:  ---
 #        AUTHOR:  win.png@gmail.com (ybyygu) 
 #       LICENCE:  GPL version 2 or upper
-#       VERSION:  0.3
 #       CREATED:  2006-8-30 
-#      REVISION:  2007-07-29 12:40
+#       UPDATED:  2007-08-01 16:27
 #===============================================================================#
+__VERSION__ = "0.3"
 
-###
-# importing
+#===============================================================================#
 #
+#  importing
+#
+#===============================================================================#
 import sys
 from sys import stdin, stderr
 import os
@@ -24,14 +26,19 @@ from stat import *
 import time
 import re
 
-###
-# constants
+#===============================================================================#
 #
-LineLength = 72
+#  constants
+#
+#===============================================================================#
+LINELENGTH = 72
 
-###
-# functions
+#===============================================================================#
 #
+#  functions
+#
+#===============================================================================#
+
 def centerWithStr(str, char, length):
     nl = (length - len(str))/2
     if nl <= 0:
@@ -39,8 +46,8 @@ def centerWithStr(str, char, length):
         nl = (length - len(str))/2
     return char * nl + str + char * nl
 
-def SummaryGassianlogFromFiles(gaussian_log_files, output_steps=8, show_all=False, warn_old=False):
-    global LineLength
+def summary_files(gaussian_log_files, output_steps=8, show_all=False, warn_old=False):
+    global LINELENGTH
     
     def log_cmp(x, y):
         x = os.stat(x)[ST_MTIME]
@@ -56,35 +63,31 @@ def SummaryGassianlogFromFiles(gaussian_log_files, output_steps=8, show_all=Fals
             print >>stderr, "Can't open %s to read!" %(log)
             continue
         hint = " %s " % basename(log)
-        print "[" + centerWithStr(hint, '=', LineLength) + "]"
+        print "[" + centerWithStr(hint, '=', LINELENGTH) + "]"
         if not show_all:
             if read_backwards(flog, output_steps):
-                print " " + ":"* LineLength
+                print " " + ":"* LINELENGTH
         walklog(flog)
         flog.close()
         hint1 = " %s " % dirname(log)
         hint2 = " %s " % basename(log)
-        print "[" + centerWithStr(hint1, '=', LineLength) + "]"
-        print "[" + centerWithStr(hint2, '=', LineLength) + "]"
+        print "[" + centerWithStr(hint1, '=', LINELENGTH) + "]"
+        print "[" + centerWithStr(hint2, '=', LINELENGTH) + "]"
 
-        # check outdated log 
-
+        # warn outdated log 
         span = (time.time() - os.stat(log)[ST_MTIME]) / 3600
         if warn_old and span > 4:
             print " ** WARNING! THIS FILE HAS NO CHANGE MORE THAN %d HOURS. **" % span
 
-def SummaryGaussianlogFromStdin():
-    return walklog(sys.stdin)
-
 def walklog(flog):
     import re
     
-    global LineLength
+    global LINELENGTH
     line = flog.readline()
     freq_count = 0
     # gaussian log file begins with a space
     if not line or not line[0] == ' ':
-        print ' ' + '*'*LineLength
+        print ' ' + '*'*LINELENGTH
         print ' this is not a gaussian log file...'
         return
 
@@ -94,7 +97,7 @@ def walklog(flog):
                 print line,
                 line = flog.readline()
         elif re.compile(r'^ #').match(line):
-            print  ' ' + '-'*LineLength
+            print  ' ' + '-'*LINELENGTH
             print line,
             for i in range(3):
                 line = flog.readline()
@@ -102,7 +105,7 @@ def walklog(flog):
                     break
                 else:
                     print line,
-            print  ' ' + '-'*LineLength
+            print  ' ' + '-'*LINELENGTH
         elif line.find("Number of steps in this run=") >= 0:
             print line,
         # print SCF information and the next two lines
@@ -111,7 +114,7 @@ def walklog(flog):
             for i in range(2):
                 line = flog.readline()
                 print line,
-            print " " + '-'*LineLength
+            print " " + '-'*LINELENGTH
         elif line.find("Step number") >= 0:
             print line,
         elif line.find("exceeded") >= 0:
@@ -130,14 +133,14 @@ def walklog(flog):
                 line = flog.readline()
         # print converged information
         elif line.find("Converged?") >= 0:
-            print " " + '-'*LineLength
+            print " " + '-'*LINELENGTH
             print line, 
             for i in range(7):
                 line = flog.readline()
                 if line.find('GradGradGrad') >=0:
                     break
                 print line,
-            print  " " + '-'*LineLength
+            print  " " + '-'*LINELENGTH
         # WARNING may be important!
         elif line.find("WARNING") >=0:
             print line,
@@ -149,7 +152,7 @@ def walklog(flog):
             print line,
         elif line.find("Sum of electronic and zero-point Energies=") >= 0:
             print line,
-            print " " + '-'*LineLength
+            print " " + '-'*LINELENGTH
         elif line.find("termination") >= 0:
             print line,
         elif line.find("Job cpu time:") >= 0:
@@ -187,49 +190,35 @@ def read_backwards(fp, maxrounds = 5, sizehint = 20000):
             continue
     return True
         
-def usage(program):
-    print 'Usage:'
-    print ' %s -h | --help' % program
-    print '   show this help screen.'
-    print ' %s' % program
-    print '   summary ~/gjf/work/*.log'
-    print ' %s dir' % program
-    print '   summary dir/*.log and dir/*.out'
-
-#==========================================================================
-# MAIN PROGRAM
-#==========================================================================
 def main (argv=None):
-    import getopt
+    import optparse
 
-    if argv is None:  argv = sys.argv
-    
     # parse commandline options
-    try:
-        opts, args = getopt.gnu_getopt(argv[1:], 'hn:a', ['help', 'step=', 'showall'])
-    except AttributeError:
-        try:
-            opts, args = getopt.getopt(argv[1:], 'hn:a', ['help', 'step=', 'showall'])
-        except:
-            print >>stderr, "Can't parse argument options."
-            sys.exit(1)
-    show_all = False 
+    cmdl_version = "%prog " + __VERSION__
+    cmdl_usage = "Usage: %prog [options] [file or directory]" 
+    cmdl_parser = optparse.OptionParser(usage=cmdl_usage, version=cmdl_version, conflict_handler='resolve')
+    cmdl_parser.add_option('-h', '--help', 
+                            action='help',
+                            help='print this help text and exit')
+    cmdl_parser.add_option('-v', '--version', 
+                            action='version',
+                            help='print program version and exit')
+    cmdl_parser.add_option('-a', '--show-all',
+                            action='store_true',
+                            dest='show_all', 
+                            default=False,
+                            help='output all available optimization steps of each gaussian file.')
+    (cmdl_opts, cmdl_args) = cmdl_parser.parse_args()
+
+    
     output_steps = 8
     warn_old = False
-    for o, a in opts:
-        if o in ('-h', '--help'):
-            usage(sys.argv[0])
-            sys.exit(0)
-        elif o in ('-n', '--step'):
-            try:
-                output_steps = int(a)
-            except:
-                pass
-        elif o in ('-a', '--showall'):
-            show_all = True
-   # try to read from default gaussian output directory if no argv specified
+    show_all = True
+    lesser = os.popen("/usr/bin/less", "w")
+    sys.stdout = lesser
+    # try to read from default gaussian output directory if no argv specified
     logfiles = []
-    if not args:
+    if not cmdl_args:
         warn_old = True
         # figure out the most possible working log file
         txt = os.popen('/usr/bin/pgrep -u $USER "g03|g98"').read().strip()
@@ -246,14 +235,21 @@ def main (argv=None):
                 logs = glob.glob(join(work_dir, "*.log"))
                 logfiles = logfiles + logs
     else:
-        for a in args:
+        for a in cmdl_args:
             if isdir(a):
                 logfiles = glob.glob(join(a, "*.log")) + glob.glob(join(a, "*.out"))
             else:
                 logfiles.append(a)
-    SummaryGassianlogFromFiles(logfiles, output_steps = output_steps, show_all = show_all, warn_old = warn_old)
+    summary_files(logfiles, output_steps = output_steps, show_all = show_all, warn_old = warn_old)
+    lesser.close()
+
+#===============================================================================#
+#
+#  Main Program
+#
+#===============================================================================#
 
 if (__name__ == "__main__"):
-    result = main()
+    result = main(sys.argv)
     sys.exit(result)
 

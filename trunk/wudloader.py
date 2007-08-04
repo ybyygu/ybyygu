@@ -9,10 +9,10 @@
 #         NOTES:  ---
 #        AUTHOR:  ybyygu 
 #       LICENCE:  GPL version 2 or upper
-#       VERSION:  0.1
 #       CREATED:  2007-06-28
-#      REVISION:  2007-07-27 15:25
+#      REVISION:  2007-08-04 09:12
 #===============================================================================#
+__VERSION__ = "0.4"
 
 # importing
 import sys
@@ -64,7 +64,7 @@ def to_k(bytes):
 #
 #===============================================================================#
 
-class multipartForm():
+class multipartForm:
     """
     multipart/form-data used to file uploading
     """
@@ -130,7 +130,7 @@ class multipartForm():
         h.endheaders()
         
         h.send(start_data)
-        fp = open(self.filePath)
+        fp = open(self.filePath, "rb")
         try:
             data = fp.read(const_block_size)
             while data:
@@ -164,13 +164,13 @@ class webshareService:
     def __init__(self):
         # parameters for uploading
         self.uploadURL = ""
+        self.postURL = ""
         self.form = multipartForm()
         self.downloadPattern = ""
         self.serverResponse = ""
         self.report = ""
 
         # parameters for downloading
-        self.downloadURL = ""
         self.savedFilename = ""
     
     def postFile(self, file_path, file_name):
@@ -192,20 +192,26 @@ class webshareService:
             download_link = p.group(1)
         return download_link
 
-    def postData(self, link, data):
+    def requestFile(self, link, data=None):
         """
         helper function for posting data
         """
         from urllib import urlencode
-        data = urlencode(data)
-        return urllib2.urlopen(link, data)
+        if data:
+            data = urlencode(data)
+            req = urllib2.Request(link, data)
+        else:
+            req = urllib2.Request(link)
+        req.add_header("Referer", link)
+        return urllib2.urlopen(req)
 
     def parseForm(self):
         """
         visit uploadURL, and parse the post URL from the output
         """
         # return when a static postURL was found
-        if self.form.postURL:
+        if self.postURL:
+            self.form.postURL = self.postURL
             return
 
         import urlparse
@@ -252,27 +258,26 @@ class webshareService:
         """
         default handle for downloading a file
         """
-        self.downloadURL = link
         file_data = self.getFile(link)
 
-        ftype = file_data.info()["Content-Type"]
         try:
-            txt = file_data.info()["Content-Disposition"]
+            if self.savedFilename:
+                filename = self.savedFilename
+            else:
+                # figure out saved_name from response-header
+                txt = file_data.info()["Content-Disposition"]
+                from urllib import unquote
+                txt = unquote(txt)
+                ind = txt.find('=') + 1
+                filename = txt[ind:]
+                if filename[0] == '"' and filename[-1] == '"':
+                    filename = filename.strip('"')
         except KeyError:
-            sys.exit("No attachment found.")
-
-        if self.savedFilename:
-            filename = self.savedFilename
-        else:
-            # figure out saved_name from response-header
-            from urllib import unquote
-            txt = unquote(txt)
-            ind = txt.find('=') + 1
-            filename = txt[ind:]
-            if filename[0] == '"' and filename[-1] == '"':
-                filename = filename.strip('"')
+            print file_data.info()
+            ftype = "Unknown"
+            filename = "noname"
         
-        print('File Type: %s\nFile Name: %s' % (ftype, filename))
+        print('File Name: %s' % (filename))
         
         # give a chance to rename an existent file.
         if os.path.exists(filename):
@@ -336,7 +341,7 @@ class bestsharingServer(webshareService):
             link = p.group(1)
         else:
             sys.exit("bestsharingServer: Cannot get the static download URL. May be a server upgrade.")
-        return urllib2.urlopen(link)
+        return self.requestFile(link)
 
 class filewindServer(webshareService):
     """
@@ -359,14 +364,11 @@ class filewindServer(webshareService):
         """
         formalize savedFilename
         """    
-        new_url = link.replace("g.php", "file.php")
-        refer_url = link
-        req = urllib2.Request(new_url)
-        req.add_header("Referer", refer_url)
-        report = urllib2.urlopen(req)
+        link = link.replace("g.php", "file.php")
+        file_data = self.requestFile(link)
 
         # fix filename
-        txt = report.info()["Content-Disposition"]
+        txt = file_data.info()["Content-Disposition"]
         rex = re.compile(r'attachment; filename="([^"]+)')
         p = rex.search(txt)
         if p:
@@ -374,7 +376,7 @@ class filewindServer(webshareService):
             self.savedFilename = filename.split(self.delimer)[0]
         else:
             sys.exit('Bad thing happened.')
-        return report
+        return file_data
 
 class fs2youServer(webshareService):
     """
@@ -400,7 +402,7 @@ class fs2youServer(webshareService):
             if p:
                 post_url = p.group(1)
                 data = dict(data)
-                self.report = self.postData(post_url, data).read()
+                self.report = self.requestFile(post_url, data).read()
             else:
                 sys.exit("Failed!")
         else:
@@ -411,9 +413,11 @@ class fs2youServer(webshareService):
         rex = re.compile(r"preview_url = '(http://.+\.fs2you\.com/[^']+)'")
         p = rex.search(report)
         if p:
-            return urllib2.urlopen(p.group(1))
+            link = p.group(1)
+            self.savedFilename = link.split("/")[-1]
         else:
             sys.exit("Failed!")
+        return self.requestFile(p.group(1))
 
 class justfreespaceServer(webshareService):
     """
@@ -424,7 +428,7 @@ class justfreespaceServer(webshareService):
         webshareService.__init__(self)
         self.identifier = ''.join(random.sample('abcdefghijklmnopqrstuvwxyz0123456789', 11))
         self.uploadURL = "http://filehost.justfreespace.com/upload.php"
-        self.form.postURL = self.uploadURL
+        self.postURL = self.uploadURL
         self.downloadPattern = r'>(http://FileHost.JustFreeSpace.Com/[^<]+)</textarea>'
     
     def fillForm(self):
@@ -469,7 +473,7 @@ class filesendServer(webshareService):
             data = {
                 "sid": p.group(2)
             }
-            return self.postData(link, data)
+            return self.requestFile(link, data)
         else:
             sys.exit("Failed!")
 
@@ -480,7 +484,7 @@ class filehostServer(webshareService):
     def __init__(self):
         webshareService.__init__(self)
         self.uploadURL = "http://www.filehost.gr"
-        self.form.postURL = "http://www.filehost.gr/upload.php"
+        self.postURL = "http://www.filehost.gr/upload.php"
         self.downloadPattern = r'href="(http://www.filehost.gr/download[^"]+)">'
 
     def fillForm(self):
@@ -506,7 +510,7 @@ class uploadjarServer(webshareService):
     def __init__(self):
         webshareService.__init__(self)
         self.uploadURL = "http://www.uploadjar.com/"
-        self.form.postURL = "http://www.uploadjar.com/upload.php"
+        self.postURL = "http://www.uploadjar.com/upload.php"
         self.downloadPattern = r'value="(http://uploadjar.com/[^"]+)"'
 
     def fillForm(self):
@@ -526,6 +530,36 @@ class uploadjarServer(webshareService):
         else:
             sys.exit("Failed!")
 
+class justupitServer(webshareService):
+    """
+    http://www.justupit.com/
+    """
+    def __init__(self):
+        webshareService.__init__(self)
+        self.uploadURL = "http://www.justupit.com/"
+        self.postURL = "http://www.justupit.com/"
+        self.downloadPattern = r'href="(http://www.Justupit.com/[^"]+)"'
+
+    def fillForm(self):
+        self.form.fileField = "filecontent"
+        self.form.appendField("friend[]", "")
+        self.form.appendField("u", "Upload File Now")
+    
+    def getFile(self, link):
+        report = urllib2.urlopen(link).read()
+        rex = re.compile(r'action="(downloadfile.php\?hash=[^"]+)">', re.IGNORECASE)
+        p = rex.search(report)
+        if p:
+            import urlparse
+            link = urlparse.urljoin(link, p.group(1))
+            data = {
+                "a": "Download File Now"
+            }
+            return self.requestFile(link, data)
+        else:
+            sys.exit("Failed!")
+
+
 class webloader:
     """
     Utilities for uploading or downloading powered by free web share service
@@ -540,9 +574,20 @@ class webloader:
         filesend = filesendServer()
         filehost = filehostServer()
         uploadjar = uploadjarServer()
+        justupit = justupitServer()
 
         # parameters for uploading session
-        self.serviceList = [wiiupload, filewind, bestsharing, fs2you, justfreespace, filesend, filehost, uploadjar]
+        self.serviceList = [ 
+                             fs2you,
+                             uploadjar,
+                             justupit,
+                             bestsharing,
+                             justfreespace,
+                             filesend,
+                             filehost,
+                             filewind,
+                             wiiupload,
+                           ]
         self.workServer = self.serviceList[0]
         self.uploadFiles = []
         self.compress = False
@@ -639,8 +684,8 @@ import optparse
 import glob
 
 # Create the command line options parser and parse command line
-cmdl_usage = 'usage: %prog [options] download_url_or_upload_filename'
-cmdl_version = '2007.07.08'
+cmdl_usage = 'usage: %prog [options]...[URL or FILENAME]...'
+cmdl_version = "%prog " + __VERSION__
 cmdl_parser = optparse.OptionParser(usage=cmdl_usage, version=cmdl_version, conflict_handler='resolve')
 cmdl_parser.add_option('-h', '--help', action='help', help='print this help text and exit')
 cmdl_parser.add_option('-v', '--version', action='version', help='print program version and exit')
