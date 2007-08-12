@@ -46,7 +46,7 @@ def centerWithStr(str, char, length):
         nl = (length - len(str))/2
     return char * nl + str + char * nl
 
-def summary_files(gaussian_log_files, output_steps=8, show_all=False, warn_old=False):
+def summary_files(gaussian_log_files, output_steps=5, show_all=False, warn_old=False):
     global LINELENGTH
     
     def log_cmp(x, y):
@@ -161,13 +161,12 @@ def walklog(flog):
         line = flog.readline()
 
 def read_backwards(fp, maxrounds = 5, sizehint = 20000):
-    """\
+    """
      Step number n-4 out of ... # stop here
      ...
      Step number n-1 out of ...
      Step number n out of ...
     """
-
     # jump to the end of the file
     fp.seek(0, 2)
 
@@ -175,7 +174,7 @@ def read_backwards(fp, maxrounds = 5, sizehint = 20000):
     while round < maxrounds: 
         try:
             fp.seek(-sizehint, 1)
-        except:
+        except IOError: # hit the top of file
             fp.seek(0, 0)
             return False
         fpos = fp.tell()
@@ -189,7 +188,112 @@ def read_backwards(fp, maxrounds = 5, sizehint = 20000):
         else:
             continue
     return True
+
+#===============================================================================#
+#
+#  Class
+#
+#===============================================================================#
+class vector:
+    """
+    Class that represents a atom space vector.
+    """    
+    def __init__(self, x, y, z):
+        self.x = x
+        self.y = y
+        self.z = z
+
+    def length(self):
+        """
+        return the length of vector
+        """
+        return sqrt(self.x**2 + self.y**2 + self.z**2)
+    
+    def distance(self, avector):
+        """
+        return the distance of the two vectors
+        """
+        return sqrt((self.x - avector.x)**2 + (self.y - avector.y)**2 + (self.z - avector.z)**2)
+
+    def dot(self, avector):
+        """
+        dot product
+        """
+        return self.x * avector.x + self.y * avector.y + self.z * avector.z
+
+    def cross(self, avector):
+        """
+        cross product
+        """
+        nx = self.y * avector.z - self.z * avector.y
+        ny = self.z * avector.x - self.x * avector.z
+        nz = self.x * avector.y - self.y * avector.x
+        return vector(nx, ny, nz)
+
+    def __sub__(self, avector):
+        x = self.x - avector.x
+        y = self.y - avector.y
+        z = self.z - avector.z
+        return vector(x, y, z)
+
+    def angle(self, vb, vc):
+        """
+        return the angle between the tree vector points: va(self), vb, vc
+        """
+        vba = self - vb
+        vbc = vc - vb
+        arg = acos(vba.dot(vbc)/vba.length()/vbc.length()) * 180.0 / 3.1415926
+        return arg
+
+    def torsion(self, vb, vc, vd):
+        """
+        return the torsion angle between the four vector points: va, vb, vc, vd
+        """
+        vba = self - vb
+        vbc = vc - vb
+        vcb = vb - vc
+        vcd = vd - vc
+        vbaxbc = vba.cross(vbc)
+        vcbxcd = vcb.cross(vcd)
+        arg = acos(vbaxbc.dot(vcbxcd) / vbaxbc.length() / vcbxcd.length()) * 180.0 /3.1415926
         
+        if vba.cross(vbc).dot(vcd) > 0:
+            sign = -1
+        else:
+            sign = 1
+        return arg * sign
+
+class atoms:
+    def __init__(self):
+        self.atoms = []
+
+    def addAtom(self, x, y, z):
+        atom = vector(x, y, z)
+        self.atoms.append(atom)
+    
+    def bond(self, id1, id2):
+        """
+        return the length of the bond specified by the two atom index numbers
+        """
+        return self.atoms[id1].distance(self.atoms[id2])
+
+    def angle(self, id1, id2, id3):
+        """
+        return the angel of the tree atoms specified by atoms index
+        """
+        return self.atoms[id1].angle(self.atoms[id2], self.atoms[id3])
+
+    def torsion(self, id1, id2, id3, id4):
+        """
+        return the torsion angle of for atoms specified by atoms index
+        """
+        return self.atoms[id1].torsion(self.atoms[id2], self.atoms[id3], self.atoms[id4])
+
+#===============================================================================#
+#
+#  Main Program
+#
+#===============================================================================#
 def main (argv=None):
     import optparse
 
@@ -210,12 +314,9 @@ def main (argv=None):
                             help='output all available optimization steps of each gaussian file.')
     (cmdl_opts, cmdl_args) = cmdl_parser.parse_args()
 
-    
-    output_steps = 8
+    output_steps = 5
     warn_old = False
     show_all = True
-    lesser = os.popen("/usr/bin/less", "w")
-    sys.stdout = lesser
     # try to read from default gaussian output directory if no argv specified
     logfiles = []
     if not cmdl_args:
@@ -240,14 +341,14 @@ def main (argv=None):
                 logfiles = glob.glob(join(a, "*.log")) + glob.glob(join(a, "*.out"))
             else:
                 logfiles.append(a)
-    summary_files(logfiles, output_steps = output_steps, show_all = show_all, warn_old = warn_old)
-    lesser.close()
 
-#===============================================================================#
-#
-#  Main Program
-#
-#===============================================================================#
+    # if show all, pipe output into file perusal filter (pager/less/more)
+    if show_all and sys.platform != "win32":
+        lesser = "/usr/bin/less"
+        if os.path.exists(lesser):
+            sys.stdout = os.popen(lesser, "w")
+
+    summary_files(logfiles, output_steps = output_steps, show_all = show_all, warn_old = warn_old)
 
 if (__name__ == "__main__"):
     result = main(sys.argv)
