@@ -9,9 +9,8 @@
 #        AUTHOR:  Wenping Guo (ybyygu) 
 #         EMAIL:  win.png@gmail.com
 #       LICENCE:  GPL version 2 or upper
-#       VERSION:  0.1
 #       CREATED:  2007-07-28
-#       UPDATED:  2007-08-12 18:24
+#       UPDATED:  2007-08-13 20:45
 #===============================================================================#
 import sys
 import cmd
@@ -29,7 +28,7 @@ import logging
 #
 #===============================================================================#
 
-__version__ = "0.2"
+__version__ = "0.3"
 cmd_pgrep = "/usr/bin/pgrep"
 cmd_ps = "/bin/ps"
 
@@ -344,7 +343,6 @@ class gaussianLogParser:
 ###
 # simple-gaussian-qsub
 #
-
 class simpleConf(object):
     """
     simple config file
@@ -455,20 +453,8 @@ class sgqConf(simpleConf):
         path = os.path.join(os.environ["HOME"], ".regvar%s" % self._code)
         simpleConf.__init__(self, path)
 
-        # regvar
-        if not self.groot:
-            self.groot = "/export/home/gaussian"
-        else:
-            self.groot = self._expandPath(self.groot)
-        if not self.gcmd:
-            self.gcmd = "g03"
-        if not self.gscratch:
-            self.gscratch = "/tmp"
-        else:
-            self.gscratch = self._expandPath(self.gscratch)
-
         if not self.sgqRootDir:
-            self.sgqRootDir = os.path.join(os.environ["HOME"], "sgq%s" % self._code)
+            self.sgqRootDir = os.path.join(os.environ["HOME"], "gjf%s" % self._code)
         else:
             self.sgqRootDir = self._expandPath(self.sgqRootDir)
         if not self.sgqQueueDir:
@@ -480,13 +466,20 @@ class sgqConf(simpleConf):
         else:
             self.sgqWorkDir = self._expandPath(self.sgqWorkDir)
         if not self.sgqArchiveDir:
-            self.sgqArchiveDir = os.path.join(self.sgqRootDir, "archive")
+            self.sgqArchiveDir = os.path.join(self.sgqRootDir, "ARCHIVE")
         else:
             self.sgqArchiveDir = self._expandPath(self.sgqArchiveDir)
         if not self.sessionID:
             hostname = socket.gethostname()
             user = os.getenv('USER')
             self.sessionID = "%s@%s%s" % (user, hostname, self._code)
+
+        # regvar
+        if not self.groot or not self.gcmd or not self.gscratch:
+            self.configure()
+            return
+        self.groot = self._expandPath(self.groot)
+        self.gscratch = self._expandPath(self.gscratch)
 
     def _expandPath(self, path):
         path = os.path.expanduser(path)
@@ -506,7 +499,6 @@ class sgqConf(simpleConf):
         dump the content of the conf file
         """
         print open(self._path).read().strip()
-
     
     def configure(self):
         """
@@ -525,11 +517,14 @@ class sgqConf(simpleConf):
         elif os.environ.has_key("g98root"):
             groot = os.environ["g98root"]
             gcmd = "g98"
+        else:
+            groot = "/export/home/gauss"
+            gcmd = "g03"
         ans = raw_input(leader + "Where is your g03/g98's root directory? (%s)" % groot)
         if ans.strip():
             groot = ans
         # question 1: where is your gaussian scratch directory?
-        gscratch = self.gscratch
+        gscratch = "/tmp"
         if os.environ.has_key("GAUSS_SCRDIR"):
             gscratch = os.environ["GAUSS_SCRDIR"]
         elif os.path.exists(os.path.join(groot, "scratch")): # /groot/scratch
@@ -537,7 +532,7 @@ class sgqConf(simpleConf):
 
         ans = raw_input(leader + "Where is your gaussian scratch diretory? (%s)" % gscratch)
         if ans.strip():
-            gscratch =ans
+            gscratch = ans
         test_dir = os.path.join(gscratch, "test_test")
 
         try:
@@ -546,9 +541,17 @@ class sgqConf(simpleConf):
         except OSError:
             print "scratch directory is not writeable. You need correct this error."
         # final test
+        self.groot = groot
+        self.gcmd = gcmd
+        self.gscratch = gscratch
         if not self.validateConf():
             print leader + "WARNING! It seems your setting does not work. I cannot find gaussian profile." 
             print cont + "Did your gaussian package install correctly?"
+            # remove unacceptable settings
+            self.groot = ""
+            self.gcmd = ""
+            self.gscratch = ""
+            sys.exit(1)
 
         # remote server
         remote_server = ""
@@ -560,9 +563,6 @@ class sgqConf(simpleConf):
             if ans.strip():
                 remote_server = ans
 
-        self.groot = groot
-        self.gcmd = gcmd
-        self.gscratch = gscratch
         if remote_server:
             self.remoteQueueDir = remote_server + ":" + self.sgqQueueDir
             self.remoteArchiveDir = remote_server + ":" + self.sgqArchiveDir
@@ -588,10 +588,35 @@ class sgqJob:
         self.host = host
         self.name = os.path.basename(path)
         self.content = ""
+        self.description = "Unknown"
 
-        # parse gjf file, fill content and checkFile
+        # parse gjf file, fill content and description
         self._parse()
     
+    def _parse(self):
+        """
+        parse the content of gjf file
+        """
+        if self.host:
+            cmd = "ssh %s 'cat %s'" % (self.host, self.path)
+        else:
+            cmd = "cat %s" % self.path
+    
+        i, o, e = os.popen3(cmd)
+        errstr = e.read()
+        if errstr:
+            log.error("%s: %s" % (cmd, errstr.strip()))
+            return
+
+        self.content = o.read()
+        rex = re.compile(r'%chk=(.$)')
+
+        # human readable job description
+        if self.host:
+            self.description = "%s from %s" % (self.name, self.host)
+        else:
+            self.description = "%s from local" % self.name
+
     def remove(self):
         """
         remove self from disk
@@ -606,26 +631,6 @@ class sgqJob:
         if errstr:
             log.error("Failed to remove job: %s" % errstr.strip())
 
-    def _parse(self):
-        """
-        parse the content of gjf file
-        """
-        if self.host:
-            cmd = "ssh %s 'cat %s'" % (self.host, self.path)
-        else:
-            cmd = "cat %s" % self.path
-    
-        i, o, e = os.popen3(cmd)
-        errstr = e.read()
-        if errstr:
-            print "sgqJob: %s" % errstr.strip()
-            return ""
-        self.content = o.read()
-        rex = re.compile(r'%chk=(.$)')
-        p = rex.search(self.content)
-        if p:
-            self.checkFile = p.group(1).strip()
-
     def sign(self):
         """
         """
@@ -636,16 +641,27 @@ class sgqQueue:
     job queue
     """
     def __init__(self):
+        # directories
+        self.localQueueDir = conf.sgqQueueDir
+        if conf.remoteQueueDir:
+            host, path = conf.remoteQueueDir.split(":", 1)
+            self.remoteHost = host
+            self.remoteQueueDir = path
+
+        # queues
         self.localQueue = []
         self.remoteQueue = []
         self.signedLocalQueue = []
         self.signedRemoteQueue = []
-        self.queue = []
+
+        self.queuedJob = None
         self.signature = socket.gethostname()
+
+        self._update()
 
     def _parseDirectory(self, path, host=""):
         """
-        path should be a directory, remote or local: host:path/
+        path should be a directory, remote or local
         """
         queue = []
 
@@ -661,95 +677,139 @@ class sgqQueue:
             log.warning("cmd [%s] failed: %s" % (cmd, errstr.strip()))
         else:
             out = o.read().strip()
-            if out:
-                lst = out.split("\n")
-            else:
-                return
+            if not out:
+                return []
+            lst = out.split("\n")
             for l in lst:
-                if host: path = host + ":" + path
-                path = os.path.join(path, l)
-                queue.append(sgqJob(path))
+                log.debug("found job %s from %s" % (l, path))
+                new_path = os.path.join(path, l)
+                queue.append(sgqJob(new_path, host))
         return queue
 
-    def updateLocal(self):
+    def _updateLocal(self):
         """
         update queue from files in queueDir
         """
-        if not os.path.exists(conf.sgqQueueDir):
+        if not os.path.exists(self.localQueueDir):
             log.warning("Queue directory does not exist. make it.")
-            os.makedirs(conf.sgqQueueDir)
+            os.makedirs(self.queueDir)
             self.localQueue = []
             return 
 
-        self.localQueue = self._parseDirectory(conf.sgqQueueDir)
+        log.debug("parse local queue jobs.")
+        self.localQueue = self._parseDirectory(self.localQueueDir)
+        log.debug("get %s jobs from local queue" % len(self.localQueue))
 
         # look into local path signed for this node
-        path = os.path.join(conf.sgqQueueDir, self.signature)
+        log.debug("parse signed local queue jobs.")
+        path = os.path.join(self.localQueueDir, self.signature)
         if not os.path.isdir(path):
-            log.debug("No signed job for %s" % (self.signature))
+            log.debug("No signed job for %s." % (self.signature))
             return
         queue = self._parseDirectory(path)
-        log.debug("get signed job from %s for %s" % (path, self.signature))
+
         # remove empty directy
         if not queue:
-            log.debug("empty signed queue for %s, remove it." % self.signature)
+            log.debug("remove empty signed queue for %s." % self.signature)
             try:
                 os.rmdir(path)
             except:
                 log.warning("failed to remove signed directory.")
-
         self.signedLocalQueue = queue
+        log.debug("get %s signed job for %s" % (len(self.signedLocalQueue), self.signature))
     
-    def updateRemote(self):
+    def _updateRemote(self):
         """
         update queue from remote host
         """
-        if not conf.remoteQueueDir:
+        if not self.remoteQueueDir:
+            log.debug("No remote queue defined.")
+            self.remoteQueue = []
             return
-        host, path = conf.remoteQueueDir.split(":", 1)
-        self.remoteQueue = self._parseDirectory(path, host)
+
+        log.debug("parse remote host %s" % self.remoteHost)
+        self.remoteQueue = self._parseDirectory(self.remoteQueueDir, self.remoteHost)
+        log.debug("get %s jobs from remote queue %s" % (len(self.remoteQueue), self.remoteHost))
+
         # look into path signed for this node
-        path = os.path.join(path, self.signature)
-        self.signedRemoteQueue = self._parseDirectory(path, host)
+        path = os.path.join(self.remoteQueueDir, self.signature)
+        log.debug("parse signed remote queue for %s" % self.signature)
+        self.signedRemoteQueue = self._parseDirectory(path, self.remoteHost)
+        log.debug("get %s jobs from signed remote queue %s" % (len(self.signedRemoteQueue), self.remoteHost))
 
-    def update(self):
+    def _update(self):
         """
-        update both
+        update queue directories, return when one queue is not empty.
         """
-        self.updateLocal()
-        self.updateRemote()
-        self.queue = self.signedLocalQueue + self.signedRemoteQueue + self.localQueue + self.remoteQueue
+        self._updateLocal()
 
-    def pop(self):
+        if self.signedLocalQueue:
+            self.queuedJob = self.signedLocalQueue.pop(0)
+            return
+        if self.localQueue:
+            self.queuedJob = self.localQueue.pop(0)
+            return
+
+        self._updateRemote()
+        if self.signedRemoteQueue:
+            self.queuedJob = self.signedRemoteQueue.pop(0)
+            return
+        if self.remoteQueue:
+            self.queuedJob = self.remoteQueue.pop(0)
+            return
+        # finally nothing got
+        self.queuedJob = None
+    
+    def _listLocal(self):
+        """
+        list local queue
+        """
+        self._updateLocal()
+        if self.signedLocalQueue:
+            print (" signed local queue for %s" % self.signature).center(72, "-")
+            print "\n".join([" " + q.name for q in self.signedLocalQueue])
+        if self.localQueue:
+            print " local queue ".center(72, "-")
+            print "\n".join([" " + q.name for q in self.localQueue])
+
+
+    def _listRemote(self):
+        """
+        list remote queue
+        """
+        self._updateRemote()
+        if self.signedRemoteQueue:
+            print (" signed remote queue for %s" % self.signature).center(72, "-")
+            print "\n".join([" " + q.name for q in self.signedRemoteQueue])
+        if self.remoteQueue:
+            print " remote queue ".center(72, "-")
+            print "\n".join([" " + q.name for q in self.remoteQueue])
+
+    def list(self):
+        """
+        list queued jobs; for interactive use
+        """
+        self._listLocal()
+        self._listRemote()
+
+    def pop(self, dry=False):
         """
         pop up a file from job queue, return file content and file name
         """
-        self.update()
-        if self.queue:
-            job = self.queue.pop(0)
+        self._update()
+        if self.queuedJob:
             # destroy queued file, use job.content to get file content
-            # TODO: fix
-            #job.remove()
-        else:
-            return None
-        return job
-
-    def currentJob(self):
-        """
-        get current job information
-        """
-        self.update()
-        if not self.isEmpty():
-            return self.queue[0]
-        else:
-            log.warning("invoke empty currentJob.")
+            if not dry:
+                self.queuedJob.remove()
+            return self.queuedJob
+        return None
 
     def isEmpty(self):
-        self.update()
-        if not self.queue:
-            return True
-        else:
+        self._update()
+        if self.queuedJob:
             return False
+        else:
+            return True
 
 class sgqArchive:
     """
@@ -766,30 +826,35 @@ class sgqArchive:
         """
         """
         # figure out a name based the .log file under workDir
-        lst = glob.glob(os.path.join(self.workDir, "*.log"))
+        os.chdir(self.workDir)
+        lst = glob.glob("*.log")
         if lst:
-            name = lst.sort()[-1][:-4]
+            lst.sort()
         else:
             log.warning("No log file found in work directory.")
             return
 
         # check gaussian log status
-        glog = name[:-4] + ".log"
+        glog = lst[-1]
         path = os.path.join(self.workDir, glog)
-        fp = open(path, "rb")
-        fp.seek(-500, 2)
-        res = fp.read().find("Normal termination")
-        fp.close()
+        try:
+            fp = open(path, "rb")
+            fp.seek(-500, 2)
+            res = fp.read().find("Normal termination")
+            fp.close()
+        except IOError, x:
+            log.error("Failed to parse gaussian log: %s" % x.strerror.strip())
+
         if res >=0:
-            status = "normal_done"
+            status = "norm_done"
         else:
             status = "error_done"
 
         # generate archive directory name
         import time
         import random
-        uid = ''.join(random.sample('abcdefghijklmnopqrstuvwxyz', 6))
-        dir = time.strftime("%Y-%m%d-%H%M") + "@%s@" % uid + name[:-4]
+        uid = ''.join(random.sample('0123456789', 8))
+        dir = time.strftime("%Y-%m%d-%H%M") + "@%s@" % uid + glog[:-4]
 
         # make necessary directories
         path = os.path.join(self.archiveDir, status, dir)
@@ -808,15 +873,14 @@ class sgqArchive:
         # make sure place_from end with "/"
         place_from = os.path.join(self.workDir, "")
         if self.host:
-            place_to = host + ":" + path
+            place_to = self.host + ":" + path
         else:
             place_to = path
         cmd = "cd %s && rsync -e ssh --quiet --dirs --times --compress ./ %s && rm -f ./*" % (place_from, place_to) 
-
         i, o, e = os.popen3(cmd)
         errstr = e.read()
         if errstr:
-                log.warning("%s: sgqArchive: %s" % (cmd, errstr.strip()))
+            log.warning("%s: sgqArchive: %s" % (cmd, errstr.strip()))
 
 class statusConf(simpleConf):
     """
@@ -835,6 +899,7 @@ class statusConf(simpleConf):
         """
         self.shouldStop = ""
         self.activePID = ""
+        self.paused = ""
 
 class sgqSubmit:
     """
@@ -859,28 +924,36 @@ class sgqSubmit:
             os.makedirs(scratch_dir)
         profile = os.path.join(conf.groot, conf.gcmd, "bsd/%s.profile" % conf.gcmd)
         if not os.path.exists(profile):
-            print "%s does not exists." % profile
-            sys.exit("Did your gaussian package setup correctly?")
+            log.error("%s does not exists." % profile)
+            log.error("Did your gaussian package setup correctly?")
 
         script = os.path.join(conf.sgqWorkDir, "run")
-        fp = open(script, "wb")
-        fp.write("#! /bin/sh\n")
-        fp.write("export g03root=%s\n" % conf.groot)
-        fp.write("export GAUSS_SCRDIR=%s\n" % scratch_dir)
-        fp.write("source %s\n" % profile)
-        fp.write("mkdir -p %s && cd %s\n" % (conf.sgqWorkDir, conf.sgqWorkDir))
-        #  convert DOS newlines to unix format, and then submit it
-        #  Sometimes, gaussian will fail to parse the gjf file when there is no  
-        #+ blank line in the end of the file, so I append one.
-        ## TODO:
-        log = job.name[:-4] + ".log"
-        fp.write("exec sed -e 's/\r$//; $G' %s | %s > %s 2> debug\n" % (job.name, conf.gcmd, log))
-        fp.close()
+        log.debug("build runable gaussian script.")
+        try:
+            fp = open(script, "wb")
+            fp.write("#! /bin/sh\n")
+            fp.write("export g03root=%s\n" % conf.groot)
+            fp.write("export GAUSS_SCRDIR=%s\n" % scratch_dir)
+            fp.write("source %s\n" % profile)
+            fp.write("mkdir -p %s && cd %s\n" % (conf.sgqWorkDir, conf.sgqWorkDir))
+            #  convert DOS newlines to unix format, and then submit it
+            #  Sometimes, gaussian will fail to parse the gjf file when there is no  
+            #+ blank line in the end of the file, so I append one.
+            ## TODO:
+            gauss_log = job.name[:-4] + ".log"
+            fp.write("exec sed -e 's/\r$//; $G' %s | %s > %s 2> debug\n" % (job.name, conf.gcmd, gauss_log))
+            fp.close()
+        except IOError, x:
+            log.error("%s" % x.strerror)
 
         # restore gjf file from content
-        fp = open(os.path.join(conf.sgqWorkDir, job.name), "wb")
-        fp.write(job.content)
-        fp.close()
+        log.debug("restore content from job.content")
+        try:
+            fp = open(os.path.join(conf.sgqWorkDir, job.name), "wb")
+            fp.write(job.content)
+            fp.close()
+        except IOError, x:
+            log.error("%s" % x.strerror)
 
         #os.chmod(script, 0755)
         os.system("/bin/sh %s" % script)
@@ -896,9 +969,11 @@ class sgqSubmit:
             job = self.jobQueue.pop() 
             log.info("get job from queue: %s" % job.name)
         while not commander.isShouldStop() and job.content:
-            log.info("submit job with name: %s" % job.name)
+            log.info("submit job: %s" % job.name)
             self.submitGaussian(job)
+            log.info("archive job: %s" % job.name)
             self.jobArchive.archive()
+            # next
             job = self.jobQueue.pop() 
         log.info("No more queued job. exit...")
         commander.over()
@@ -907,9 +982,17 @@ class sgqCommander:
     """
     commander send command
     """
-    def __init__(self):
+    def __init__(self, interactive=True):
         self.jobQueue = sgqQueue()
         self.status = statusConf()
+        self.interactive = interactive
+
+    def _print(self, string):
+        """
+        condition print
+        """
+        if self.interactive:
+            print string
 
     def pause(self):
         """
@@ -919,9 +1002,9 @@ class sgqCommander:
             pid = int(self.status.activePID)
             self._signalAll(pid, signal.SIGSTOP)
             self.status.paused = "yes"
-            print "Job was paused. Enter resume to continue."
+            return "Job was paused. Enter resume to continue."
         else:
-            print "No active queue found."
+            return "No active queue found."
     
     def isPaused(self):
         """
@@ -940,7 +1023,7 @@ class sgqCommander:
         i, o, e = os.popen3(cmd)
         errstr = e.read()
         if errstr:
-            if __DEBUG__: print "sgqCommander: %s" % errstr
+            log.error("failed to get sub process: %s" % errstr)
             return []
         pids = o.read().strip().split()
         return pids
@@ -962,6 +1045,36 @@ class sgqCommander:
             for p in pids:
                 self._signalAll(p, signal)
 
+    def _fixLostPID(self):
+        """
+        find out daemon process ID if PID status lost.
+        """
+        prog = os.path.basename(sys.argv[0])
+        cmd = "%s -f python.*%s" % (cmd_pgrep, prog)
+        i, o, e = os.popen3(cmd)
+        err = e.read().strip()
+        if err:
+            log.warning("find lost PID failed: %s" % err)
+            return
+
+        out = o.read().strip()
+        if out:
+            pids = out.split("\n")
+            me = os.getpid()
+            for p in pids:
+                if p != str(me):
+                    self.status.activePID = p
+            else:
+                log.error("Cannot find lost daemon pid.")
+        else:
+            log.error("No output produced. No lost daemon pid found.")
+
+    def rebuildStatus(self):
+        """
+        rebuild status if status missing
+        """
+        self._fixLostPID()
+
     def resume(self):
         """
         resume a job
@@ -970,36 +1083,43 @@ class sgqCommander:
             pid = self.status.activePID
             self._signalAll(pid, signal.SIGCONT)
             self.status.paused = ""
-            print "Job was resumed."
+            return "Job was resumed."
         else:
-            print "No active queue found."
+            return "No active queue found."
 
-    def start(self, arg=None):
+    def start(self, arg=None, ask=False):
         """
         start job queue
         """
         if self.isActive():
-            print "daemon queue is still running."
-            return
+            return "daemon queue is still running."
 
         # try to start q new queue
-        if arg:
-            ans = raw_input("submit with %s now? (Y/n)" % arg)
+        job = self.jobQueue.pop(dry=True)
+        if not job:
+            return "Queue is empty. Please put jobs into queue, and try again."
+
+        if ask:
+            if arg:
+                question = "submit %s with %s now? (Y/n)" % (job.description, arg)
+            else:
+                question = "submit %s now? (Y/n)" % (job.description)
+            ans = raw_input(question)
             if ans and ans.lower() != "y":
                 return
-        else:
-            job = self.jobQueue.currentJob()
-            if not job:
-                print "Queue is empty. Please put jobs into queue, and try again."
-                return
-            ans = raw_input("submit %s now? (Y/n)" % job.name)
-            if ans.strip() and ans.lower() != "y":
-                return
-        print "queue is activated as a daemon."
+
         submitter = sgqSubmit(self.jobQueue, arg)
+        #pid = submitter.loop()
         pid = daemonize(submitter.loop)
         self.status.activePID = pid
-    
+        return "queue is activated as a daemon."
+
+    def listQueue(self):
+        """
+        list queued jobs
+        """
+        self.jobQueue.list()
+
     def stop(self):
         """
         stop queue
@@ -1010,31 +1130,37 @@ class sgqCommander:
         """
         show queue status
         """
+        log.debug("query queue status")
         if self.status.shouldStop == "now":
-            print "Queue will be stopped after current job."
-            return
+            return "Queue will be stopped after current job."
         if self.status.activePID:
             if self.status.paused:
-                print "Job was paused."
-                return
-            print "Daemon queue is running."
-            return
+                return "Job was paused."
+            return "Daemon queue is running."
 
-        print "No active daemon queue found."
+        return "No active daemon queue found."
 
     def restart(self):
         """
         restart current job
         """
-        print "not implemented"
-        return
+        return "not implemented"
         self.terminate()
         self.start(new_gjf)
    
-    def kill(self):
+    def kill(self, ask=False):
         """
         kill sub processes
         """
+        if not self.isActive():
+            return "No active queue found."
+
+        if ask:
+            question = "kill running job now? queued job will be continued. (Y/n)"
+            ans = raw_input(question)
+            if ans.strip() and ans.lower() != "y":
+                return
+
         pid = self.status.activePID
         pids = self._subPIDS(pid)
         for p in pids:
@@ -1042,29 +1168,32 @@ class sgqCommander:
             self._signalAll(p, signal.SIGKILL)
 
     def isShouldStop(self):
+        self.status.refresh()
         if self.status.shouldStop == "now":
             return True
         return False
 
-    def terminate(self):
+    def terminate(self, ask=False):
+        """
+        stop queue and kill running jobs
+        """
         if not self.isActive():
-            print "daemon queue is not running."
-            return
+            return "daemon queue is not running."
 
-        ans = raw_input("terminate daemon queue and kill current job? (N/y)")
-        if not ans.strip() or ans.lower() != "y":
-            return
+        if ask:
+            ans = raw_input("terminate daemon queue and kill current job? (y/N)")
+            if not ans.strip() or ans.lower() != "y":
+                return
         self.stop()
         self.kill()
-        self.over()
 
-        print "queue is over. use 'start' to build a new one."
+        return "queue is over. use 'start' to build a new one."
 
     def isActive(self):
         if self.status.activePID:
             if os.path.exists("/proc/%s" % self.status.activePID):
                 return True
-            print "queue status is stale. Remove it..."
+            log.info("queue status is stale. Remove it...")
             self.status.clear()
         return False
     
@@ -1078,7 +1207,19 @@ class Interpreter(cmd.Cmd):
     def __init__(self):
         cmd.Cmd.__init__(self)
         self.prompt = "sgq> "
-        self.intro = """This is job queue Processor; type 'q' to quit; '?' for help."""
+        self.intro = """Hi, this is job queue Processor; type 'q' to quit; '?' for help. enter start to submit job."""
+        resp = commander.showStatus()
+        if resp:
+            self.intro += "\nTIP: %s" % resp
+
+    def _print(self, string):
+        """
+        pp print
+        """
+        if string:
+            lst = string.split("\n")
+            for l in lst:
+                print l
 
     def completedefault(self, *ignored):
         try:
@@ -1103,27 +1244,68 @@ class Interpreter(cmd.Cmd):
         """
         default handler for command
         """
-        os.system(line)
+        self._print("Not implemented. Try shell command:")
+        self._print("="*72)
+        try:
+            os.system(line)
+            #i, o, e = os.popen3(line)
+            #err = e.read()
+            #out = o.read()
+        except KeyboardInterrupt:
+            return
+
+        #if err:
+        #    self._print("%s" % err.strip())
+        #else:
+        #    self._print("%s" % out)
 
     def do_summary(self, server):
         """summary current running job"""
-        print "summary:"
+        self._print("summary:")
 
-    def do_status(self, arg):
+    def do_fixstatus(self, arg):
+        """fix status if status spoiled"""
+        commander.rebuildStatus()
+        self._print("job finished. type 'status' to verify.")
+
+    def do_status(self, arg=None):
         """check current status"""
-        commander.showStatus()
+        resp = commander.showStatus()
+        self._print(resp)
+
+    def do_pwd(self, arg):
+        """pwd like in shell"""
+        self._print("you are here: " + os.path.abspath("."))
 
     def do_cdw(self, arg):
         """change to work directory"""
-        os.chdir(conf.sgqWorkDir)
-    
-    def do_pwd(self, arg):
-        """pwd like in shell"""
-        print os.path.abspath(".")
+        try:
+            os.chdir(conf.sgqWorkDir)
+        except OSError, x:
+            print x.strerror.strip()
 
     def do_cdq(self, arg):
         """change to queue directory"""
-        os.chdir(conf.sgqQueueDir)
+        try:
+            os.chdir(conf.sgqQueueDir)
+        except OSError, x:
+            print x.strerror.strip()
+
+    def do_cde(self, arg):
+        """change to error_done directory"""
+        dir = os.path.join(conf.sgqArchiveDir, "error_done")
+        try:
+            os.chdir(dir)
+        except OSError, x:
+            print x.strerror.strip()
+
+    def do_cdn(self, arg):
+        """chanage to norm_done directory"""
+        dir = os.path.join(conf.sgqArchiveDir, "norm_done")
+        try:
+            os.chdir(dir)
+        except OSError, x:
+            print x.strerror.strip()
 
     def do_clear(self, arg):
         """clear like in shell"""
@@ -1146,24 +1328,30 @@ class Interpreter(cmd.Cmd):
     
     def do_ls(self, arg):
         """ls like in shell"""
-        print "\n".join(os.listdir("."))
+        self._print("\n".join(os.listdir(".")))
+
+    def do_lsq(self, arg):
+        """list queued job"""
+        commander.listQueue()
 
     def do_resume(self, arg):
         """resume gaussian queue"""
-        commander.resume()
+        resp = commander.resume()
+        self._print(resp)
 
     def do_pause(self, arg):
         """pause gaussian queues"""
-        commander.pause()
+        resp = commander.pause()
+        self._print(resp)
 
     def do_kill(self, server):
         """kill current job running on server"""
-        commander.kill()
+        commander.kill(ask=True)
 
     def do_stop(self, arg):
         """turn off job queue, but current job will be still running."""
         commander.stop()
-        print "queue will be stopped after current job."
+        self._print("queue will be stopped after current job.")
    
     def help_start(self):
         print "start [warm-up-job]"
@@ -1176,13 +1364,15 @@ class Interpreter(cmd.Cmd):
             if len(lst) == 1:
                 warmup_job = lst[0]
             else:
-                print "\n".join(lst)
+                self._print("\n".join(lst))
                 return
-        commander.start(warmup_job)
+        resp = commander.start(warmup_job, ask=True)
+        self._print(resp)
 
     def do_terminate(self, arg):
         """stop job queue, and kill current job."""
-        commander.terminate()
+        resp = commander.terminate(ask=True)
+        self._print(resp)
 
     def do_EOF(self, arg):
         """exit Interpreter, but queue will be still running backgroundly."""
@@ -1313,10 +1503,10 @@ def main(argv=None):
         return
     
     # submit job
-    if cmdl_opts.file:
-        commander.start(cmdl_opts.file)
-    else:
-        commander.start()
+    #if cmdl_opts.file:
+    #    commander.start(cmdl_opts.file)
+    #else:
+    #    commander.start(ask=True)
     qsg = Interpreter()
     qsg.cmdloop()
 
