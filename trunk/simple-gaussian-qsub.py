@@ -10,7 +10,7 @@
 #         EMAIL:  win.png@gmail.com
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  2007-07-28
-#       UPDATED:  2007-08-13 20:45
+#       UPDATED:  2007-08-13 25:45
 #===============================================================================#
 import sys
 import cmd
@@ -28,7 +28,7 @@ import logging
 #
 #===============================================================================#
 
-__version__ = "0.3"
+__version__ = "0.4"
 cmd_pgrep = "/usr/bin/pgrep"
 cmd_ps = "/bin/ps"
 
@@ -598,9 +598,9 @@ class sgqJob:
         parse the content of gjf file
         """
         if self.host:
-            cmd = "ssh %s 'cat %s'" % (self.host, self.path)
+            cmd = "ssh %s 'cat \'%s\''" % (self.host, self.path)
         else:
-            cmd = "cat %s" % self.path
+            cmd = "cat '%s'" % self.path
     
         i, o, e = os.popen3(cmd)
         errstr = e.read()
@@ -822,6 +822,17 @@ class sgqArchive:
         self.archiveDir = dest_dir
         self.host = host
 
+    def safepath(self, path_string):
+        """
+        shell safe path
+        """
+        from string import maketrans
+
+        intab = "()!$'\"<>;"
+        outab = "__##_%%[]"
+        trantab=maketrans(intab, outab)
+        return path_string.translate(trantab)
+
     def archive(self):
         """
         """
@@ -853,15 +864,16 @@ class sgqArchive:
         # generate archive directory name
         import time
         import random
+        glog = self.safepath(glog)
         uid = ''.join(random.sample('0123456789', 8))
         dir = time.strftime("%Y-%m%d-%H%M") + "@%s@" % uid + glog[:-4]
 
         # make necessary directories
         path = os.path.join(self.archiveDir, status, dir)
         if self.host:
-            cmd = "ssh %s 'mkdir -p %s'" % (self.host, path)
+            cmd = "ssh %s 'mkdir -p \'%s\''" % (self.host, path)
         else:
-            cmd = "mkdir -p %s" % path
+            cmd = "mkdir -p '%s'" % path
         print path
         i, o, e = os.popen3(cmd)
         errstr = e.read()
@@ -876,7 +888,7 @@ class sgqArchive:
             place_to = self.host + ":" + path
         else:
             place_to = path
-        cmd = "cd %s && rsync -e ssh --quiet --dirs --times --compress ./ %s && rm -f ./*" % (place_from, place_to) 
+        cmd = "cd '%s' && rsync -e ssh --quiet --dirs --times --compress ./ %s && rm -f ./*" % (place_from, place_to) 
         i, o, e = os.popen3(cmd)
         errstr = e.read()
         if errstr:
@@ -941,7 +953,7 @@ class sgqSubmit:
             #+ blank line in the end of the file, so I append one.
             ## TODO:
             gauss_log = job.name[:-4] + ".log"
-            fp.write("exec sed -e 's/\r$//; $G' %s | %s > %s 2> debug\n" % (job.name, conf.gcmd, gauss_log))
+            fp.write("exec sed -e 's/\r$//; $G' '%s' | %s > '%s' 2> debug\n" % (job.name, conf.gcmd, gauss_log))
             fp.close()
         except IOError, x:
             log.error("%s" % x.strerror)
@@ -965,16 +977,14 @@ class sgqSubmit:
         if self.warmup_job_path and os.path.isfile(self.warmup_job_path):
             job = sgqJob(self.warmup_job_path)
             log.info("get warmup_job_path with: %s" % self.warmup_job_path)
-        else:
+        while not commander.isShouldStop():
             job = self.jobQueue.pop() 
-            log.info("get job from queue: %s" % job.name)
-        while not commander.isShouldStop() and job.content:
             log.info("submit job: %s" % job.name)
+            if not job.content:
+                return
             self.submitGaussian(job)
             log.info("archive job: %s" % job.name)
             self.jobArchive.archive()
-            # next
-            job = self.jobQueue.pop() 
         log.info("No more queued job. exit...")
         commander.over()
 
@@ -1087,7 +1097,7 @@ class sgqCommander:
         else:
             return "No active queue found."
 
-    def start(self, arg=None, ask=False):
+    def start(self, warmup_file=None, ask=False):
         """
         start job queue
         """
@@ -1095,20 +1105,19 @@ class sgqCommander:
             return "daemon queue is still running."
 
         # try to start q new queue
-        job = self.jobQueue.pop(dry=True)
-        if not job:
-            return "Queue is empty. Please put jobs into queue, and try again."
-
         if ask:
-            if arg:
-                question = "submit %s with %s now? (Y/n)" % (job.description, arg)
+            if warmup_file:
+                question = "submit with %s now? (Y/n)" % (warmup_file)
             else:
+                job = self.jobQueue.pop(dry=True)
+                if not job:
+                    return "Queue is empty. Please put jobs into queue, and try again."
                 question = "submit %s now? (Y/n)" % (job.description)
             ans = raw_input(question)
             if ans and ans.lower() != "y":
                 return
 
-        submitter = sgqSubmit(self.jobQueue, arg)
+        submitter = sgqSubmit(self.jobQueue, warmup_file)
         #pid = submitter.loop()
         pid = daemonize(submitter.loop)
         self.status.activePID = pid
@@ -1503,10 +1512,10 @@ def main(argv=None):
         return
     
     # submit job
-    #if cmdl_opts.file:
-    #    commander.start(cmdl_opts.file)
-    #else:
-    #    commander.start(ask=True)
+    if cmdl_opts.file:
+        commander.start(cmdl_opts.file)
+    else:
+        commander.start(ask=True)
     qsg = Interpreter()
     qsg.cmdloop()
 
