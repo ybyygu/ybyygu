@@ -10,7 +10,7 @@
 #         EMAIL:  win.png@gmail.com
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  2007-07-28
-#       UPDATED:  2007-08-13 25:45
+#       UPDATED:  2007-08-21 17:00
 #===============================================================================#
 import sys
 import cmd
@@ -20,6 +20,7 @@ import re
 import glob
 import socket
 import signal
+from stat import *
 import logging
 
 #===============================================================================#
@@ -28,7 +29,7 @@ import logging
 #
 #===============================================================================#
 
-__version__ = "0.4"
+__version__ = "0.5"
 cmd_pgrep = "/usr/bin/pgrep"
 cmd_ps = "/bin/ps"
 
@@ -102,6 +103,56 @@ def summary_gaussian(where=None):
                 sort_log_files(files)
                 for f in files:
                     summary_log(f)
+
+def center_string(string, length, fill_char=" "):
+    try:
+        return string.center(length, fill_char)
+    except TypeError:
+        # fill char need python 2.4
+        return string.center(length).replace(" ", fill_char)
+
+def move(_from, _to):
+    """
+    deal with cross-device link; file into file, dir into dir
+    """
+    try:
+        os.rename(_from, _to)
+    except OSError:
+        import shutil
+        if os.path.isdir(_from):
+            shutil.copytree(_from, _to)
+            shutil.rmtree(_from)
+        else:
+            shutil.copyfile(_from, _to)
+            os.remove(_from)
+
+def smart_move(where_from, where_to):
+    """
+    smart move like in shell
+    """
+    # make directories if necessary
+    dirname = os.path.dirname(where_to)
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+    # if a file
+    if os.path.isfile(where_from):
+        # file to a file
+        if os.path.basename(where_to):
+            pass
+        # file to a dir
+        else:
+            file_name = os.path.basename(where_from)
+            where_to = os.path.join(where_to, file_name)
+    # if a dir
+    elif os.path.isdir(where_from):
+        # dir to a newdir
+        if os.path.basename(where_to):
+            pass
+        # dir into another dir
+        else:
+            dir_name = os.path.basename(where_from)
+            where_to = os.path.join(where_to, dir_name)
+    move(where_from, where_to)
 
 #===============================================================================#
 #
@@ -207,15 +258,15 @@ class atoms:
         """
         return self.atoms[id1].torsion(self.atoms[id2], self.atoms[id3], self.atoms[id4])
 
-class gaussianLogParser:
+class GaussianLogParser:
     """
     things related to gaussian log file
     """
     def __init__(self, filename):
         try:
-            self.fp = open(filename)
+            self.fp = open(filename, "rb")
         except IOError:
-            print "Cannot open %s" % filename
+            log.error("Cannot open %s" % filename)
             raise
 
         self.cur_pos = 0
@@ -225,6 +276,7 @@ class gaussianLogParser:
         self.end_pos = 0
         self.end_step = 0
 
+        # seek to the end of the file
         fp.seek(0,2)
         self._fp_size = fp.tell()
 
@@ -238,7 +290,6 @@ class gaussianLogParser:
         """
         search and locate the opt_step position
         """
-
         if opt_step == 0:
             fp.seek(0, 0)
             return True
@@ -276,7 +327,7 @@ class gaussianLogParser:
                 self.fp.seek(self.cur_pos, 0)
                 return True
 
-        # minus step number mean step backwardly from the end
+        # minus step number means step backwardly from the end
         if opt_step < 0:
             opt_step = opt_step + self.end_step -1
         
@@ -375,15 +426,15 @@ class simpleConf(object):
         """
         if not name.startswith("_"):
             if not self.__dict__["_data"].has_key(name):
-                log.debug("set new attr %s with data %s" % (name, value))
+                #log.debug("set new attr %s with data %s" % (name, value))
                 if value:
                     self.__dict__["_keys"].append(name)
                     self.__dict__["_data"][name] = str(value)
                     self._write()
             elif self.__dict__["_data"][name] !=value:
-                log.debug("set attr %s with data %s" % (name, value))
+                #log.debug("set attr %s with data %s" % (name, value))
                 if not value:
-                    log.debug("remove empty attr %s" % name)
+                    #log.debug("remove empty attr %s" % name)
                     del self.__dict__["_data"][name]
                     self.__dict__["_keys"].remove(name)
                 else:
@@ -462,7 +513,7 @@ class sgqConf(simpleConf):
         else:
             self.sgqQueueDir = self._expandPath(self.sgqQueueDir)
         if not self.sgqWorkDir:
-            self.sgqWorkDir = os.path.join(self.sgqRootDir, "work")
+            self.sgqWorkDir = os.path.join(self.sgqRootDir, "work." + socket.gethostname())
         else:
             self.sgqWorkDir = self._expandPath(self.sgqWorkDir)
         if not self.sgqArchiveDir:
@@ -477,7 +528,7 @@ class sgqConf(simpleConf):
         # regvar
         if not self.groot or not self.gcmd or not self.gscratch:
             self.configure()
-            return
+            sys.exit(0)
         self.groot = self._expandPath(self.groot)
         self.gscratch = self._expandPath(self.gscratch)
 
@@ -568,10 +619,10 @@ class sgqConf(simpleConf):
             self.remoteArchiveDir = remote_server + ":" + self.sgqArchiveDir
         print leader + "Please make sure below lines exactly match your need."
         print cont + "Or you can directly edit [ %s ]." % self._path
-        print "[ Conf-Begin ]".center(72, '-')
+        print center_string("[ Conf-Begin ]", 72, '-')
         # write into regvar file
         self.dump()
-        print "[ Conf-End ]".center(72, '-')
+        print center_string("[ Conf-End ]", 72, '-')
 
         print leader + "Configuration finished."
 
@@ -598,7 +649,7 @@ class sgqJob:
         parse the content of gjf file
         """
         if self.host:
-            cmd = "ssh %s 'cat \'%s\''" % (self.host, self.path)
+            cmd = r"ssh %s cat \''%s'\'" % (self.host, self.path)
         else:
             cmd = "cat '%s'" % self.path
     
@@ -622,9 +673,9 @@ class sgqJob:
         remove self from disk
         """
         if self.host:
-            cmd = "ssh %s 'rm -f %s'" % (self.host, self.path)
+            cmd = r"ssh %s rm -f \''%s'\'" % (self.host, self.path)
         else:
-            cmd = "rm -f %s" % (self.path)
+            cmd = "rm -f '%s'" % (self.path)
 
         i, o, e = os.popen3(cmd)
         errstr = e.read()
@@ -643,10 +694,12 @@ class sgqQueue:
     def __init__(self):
         # directories
         self.localQueueDir = conf.sgqQueueDir
+        host = ""
+        path = ""
         if conf.remoteQueueDir:
             host, path = conf.remoteQueueDir.split(":", 1)
-            self.remoteHost = host
-            self.remoteQueueDir = path
+        self.remoteHost = host
+        self.remoteQueueDir = path
 
         # queues
         self.localQueue = []
@@ -657,7 +710,7 @@ class sgqQueue:
         self.queuedJob = None
         self.signature = socket.gethostname()
 
-        self._update()
+        #self._update()
 
     def _parseDirectory(self, path, host=""):
         """
@@ -692,7 +745,7 @@ class sgqQueue:
         """
         if not os.path.exists(self.localQueueDir):
             log.warning("Queue directory does not exist. make it.")
-            os.makedirs(self.queueDir)
+            os.makedirs(self.localQueueDir)
             self.localQueue = []
             return 
 
@@ -737,10 +790,12 @@ class sgqQueue:
         self.signedRemoteQueue = self._parseDirectory(path, self.remoteHost)
         log.debug("get %s jobs from signed remote queue %s" % (len(self.signedRemoteQueue), self.remoteHost))
 
-    def _update(self):
+    def _update(self, silent=True):
         """
         update queue directories, return when one queue is not empty.
         """
+        if not silent:
+            print "updating local queue..."
         self._updateLocal()
 
         if self.signedLocalQueue:
@@ -750,6 +805,9 @@ class sgqQueue:
             self.queuedJob = self.localQueue.pop(0)
             return
 
+        if not silent:
+            print "local queue is empty."
+            print "updating remote queue(%s), waiting..." % self.remoteHost
         self._updateRemote()
         if self.signedRemoteQueue:
             self.queuedJob = self.signedRemoteQueue.pop(0)
@@ -758,6 +816,8 @@ class sgqQueue:
             self.queuedJob = self.remoteQueue.pop(0)
             return
         # finally nothing got
+        if not silent:
+            print "remote queue is empty."
         self.queuedJob = None
     
     def _listLocal(self):
@@ -766,10 +826,10 @@ class sgqQueue:
         """
         self._updateLocal()
         if self.signedLocalQueue:
-            print (" signed local queue for %s" % self.signature).center(72, "-")
+            print center_string(" signed local queue for %s" % self.signature, 72, "-")
             print "\n".join([" " + q.name for q in self.signedLocalQueue])
         if self.localQueue:
-            print " local queue ".center(72, "-")
+            print center_string(" local queue ", 72, "-")
             print "\n".join([" " + q.name for q in self.localQueue])
 
 
@@ -779,10 +839,10 @@ class sgqQueue:
         """
         self._updateRemote()
         if self.signedRemoteQueue:
-            print (" signed remote queue for %s" % self.signature).center(72, "-")
+            print center_string(" signed remote queue for %s" % self.signature, 72, "-")
             print "\n".join([" " + q.name for q in self.signedRemoteQueue])
         if self.remoteQueue:
-            print " remote queue ".center(72, "-")
+            print center_string(" remote queue ", 72, "-")
             print "\n".join([" " + q.name for q in self.remoteQueue])
 
     def list(self):
@@ -792,11 +852,11 @@ class sgqQueue:
         self._listLocal()
         self._listRemote()
 
-    def pop(self, dry=False):
+    def pop(self, dry=False, silent=True):
         """
         pop up a file from job queue, return file content and file name
         """
-        self._update()
+        self._update(silent)
         if self.queuedJob:
             # destroy queued file, use job.content to get file content
             if not dry:
@@ -835,12 +895,14 @@ class sgqArchive:
 
     def archive(self):
         """
+        archive jobs
         """
         # figure out a name based the .log file under workDir
         os.chdir(self.workDir)
         lst = glob.glob("*.log")
         if lst:
-            lst.sort()
+            # sort by modified date
+            sort_log_files(lst)
         else:
             log.warning("No log file found in work directory.")
             return
@@ -855,8 +917,9 @@ class sgqArchive:
             fp.close()
         except IOError, x:
             log.error("Failed to parse gaussian log: %s" % x.strerror.strip())
+            sys.exit(1)
 
-        if res >=0:
+        if res >= 0:
             status = "norm_done"
         else:
             status = "error_done"
@@ -864,35 +927,50 @@ class sgqArchive:
         # generate archive directory name
         import time
         import random
-        glog = self.safepath(glog)
-        uid = ''.join(random.sample('0123456789', 8))
-        dir = time.strftime("%Y-%m%d-%H%M") + "@%s@" % uid + glog[:-4]
+        #glog = self.safepath(glog)
+        uid = random.randint(0,999999)
+        arch_dir = time.strftime("%Y-%m%d-%H%M") + "@%06i@" % uid + glog[:-4]
 
-        # make necessary directories
-        path = os.path.join(self.archiveDir, status, dir)
-        if self.host:
-            cmd = "ssh %s 'mkdir -p \'%s\''" % (self.host, path)
-        else:
-            cmd = "mkdir -p '%s'" % path
-        print path
-        i, o, e = os.popen3(cmd)
-        errstr = e.read()
-        if errstr:
-            log.warning("%s: %s" % (cmd, errstr.strip()))
-            return False
+        # build up archive list
+        lst_from = glob.glob("*.log") + \
+                   glob.glob("*.gjf") + \
+                   glob.glob("*.chk") + \
+                   glob.glob("*.com") + \
+                   glob.glob("run") + \
+                   glob.glob("debug") + \
+                   glob.glob("status")
+
+        # make a temporary archiving 
+        os.mkdir(arch_dir)
+        for f in lst_from:
+            t = os.path.join(arch_dir, f)
+            os.rename(f, t)
 
         # rsync is a great tool, so use rsync to do the real work
-        # make sure place_from end with "/"
-        place_from = os.path.join(self.workDir, "")
+        # make leading directory in order to dismiss rsync error
+        cmd = "mkdir -p '%s'" % (self.archiveDir)
         if self.host:
-            place_to = self.host + ":" + path
-        else:
-            place_to = path
-        cmd = "cd '%s' && rsync -e ssh --quiet --dirs --times --compress ./ %s && rm -f ./*" % (place_from, place_to) 
+            cmd = r"ssh '%s' mkdir -p \''%s'\'" % (self.host, self.archiveDir)
+
         i, o, e = os.popen3(cmd)
         errstr = e.read()
         if errstr:
-            log.warning("%s: sgqArchive: %s" % (cmd, errstr.strip()))
+            log.error("%s: sgqArchive: %s" % (cmd, errstr.strip()))
+            sys.exit(1)
+
+        # archiving
+        place_to = "'%s'" % os.path.join(self.archiveDir, status)
+        if self.host:
+            place_to = "%s:\''%s'\'" % (self.host, place_to)
+
+        cmd = "cd '%s' && rsync -e ssh --quiet --compress --archive '%s' %s && rm -rf '%s'" \
+                % (self.workDir, arch_dir, place_to, arch_dir) 
+
+        i, o, e = os.popen3(cmd)
+        errstr = e.read()
+        if errstr:
+            log.error("%s: sgqArchive: %s" % (cmd, errstr.strip()))
+            sys.exit(1)
 
 class statusConf(simpleConf):
     """
@@ -939,7 +1017,12 @@ class sgqSubmit:
             log.error("%s does not exists." % profile)
             log.error("Did your gaussian package setup correctly?")
 
-        script = os.path.join(conf.sgqWorkDir, "run")
+        # build workdir if necessary
+        work_dir = conf.sgqWorkDir
+        gcmd = conf.gcmd
+        if not os.path.exists(work_dir):
+            os.makedirs(work_dir)
+        script = os.path.join(work_dir, "run")
         log.debug("build runable gaussian script.")
         try:
             fp = open(script, "wb")
@@ -947,13 +1030,13 @@ class sgqSubmit:
             fp.write("export g03root=%s\n" % conf.groot)
             fp.write("export GAUSS_SCRDIR=%s\n" % scratch_dir)
             fp.write("source %s\n" % profile)
-            fp.write("mkdir -p %s && cd %s\n" % (conf.sgqWorkDir, conf.sgqWorkDir))
+            fp.write("mkdir -p %s && cd %s\n" % (work_dir, work_dir))
             #  convert DOS newlines to unix format, and then submit it
             #  Sometimes, gaussian will fail to parse the gjf file when there is no  
             #+ blank line in the end of the file, so I append one.
             ## TODO:
             gauss_log = job.name[:-4] + ".log"
-            fp.write("exec sed -e 's/\r$//; $G' '%s' | %s > '%s' 2> debug\n" % (job.name, conf.gcmd, gauss_log))
+            fp.write("exec sed -e 's/\r$//; $G' '%s' | %s > '%s' 2> debug\n" % (job.name, gcmd, gauss_log))
             fp.close()
         except IOError, x:
             log.error("%s" % x.strerror)
@@ -966,9 +1049,10 @@ class sgqSubmit:
             fp.close()
         except IOError, x:
             log.error("%s" % x.strerror)
+            sys.exit(1)
 
         #os.chmod(script, 0755)
-        os.system("/bin/sh %s" % script)
+        os.system("/bin/bash %s" % script)
 
     def loop(self):
         """
@@ -977,11 +1061,16 @@ class sgqSubmit:
         if self.warmup_job_path and os.path.isfile(self.warmup_job_path):
             job = sgqJob(self.warmup_job_path)
             log.info("get warmup_job_path with: %s" % self.warmup_job_path)
+            self.submitGaussian(job)
+            log.info("archive job: %s" % job.name)
+            self.jobArchive.archive()
         while not commander.isShouldStop():
             job = self.jobQueue.pop() 
+            if not job:
+                break
             log.info("submit job: %s" % job.name)
             if not job.content:
-                return
+                continue
             self.submitGaussian(job)
             log.info("archive job: %s" % job.name)
             self.jobArchive.archive()
@@ -1050,7 +1139,7 @@ class sgqCommander:
                 log.debug("kill pid %s with signal %s" % (pid, signal))
                 os.kill(int(pid), signal)
             except OSError, x:
-                log.error("%s" % x.strerror)
+                log.debug("%s: %s" % (pid, x.strerror))
         else: # kill sub processes recursively
             for p in pids:
                 self._signalAll(p, signal)
@@ -1109,7 +1198,7 @@ class sgqCommander:
             if warmup_file:
                 question = "submit with %s now? (Y/n)" % (warmup_file)
             else:
-                job = self.jobQueue.pop(dry=True)
+                job = self.jobQueue.pop(dry=True, silent=False)
                 if not job:
                     return "Queue is empty. Please put jobs into queue, and try again."
                 question = "submit %s now? (Y/n)" % (job.description)
@@ -1193,14 +1282,22 @@ class sgqCommander:
             ans = raw_input("terminate daemon queue and kill current job? (y/N)")
             if not ans.strip() or ans.lower() != "y":
                 return
-        self.stop()
-        self.kill()
+        pid = self.status.activePID
+        pids = self._subPIDS(pid)
+        log.debug("kill daemon queue process.")
+        os.kill(int(pid), signal.SIGKILL)
+        for p in pids:
+            log.debug("kill sub process %s" % p)
+            self._signalAll(p, signal.SIGKILL)
+
+        self.over()
 
         return "queue is over. use 'start' to build a new one."
 
     def isActive(self):
         if self.status.activePID:
             if os.path.exists("/proc/%s" % self.status.activePID):
+                log.debug("active daemon queue found.")
                 return True
             log.info("queue status is stale. Remove it...")
             self.status.clear()
@@ -1216,10 +1313,10 @@ class Interpreter(cmd.Cmd):
     def __init__(self):
         cmd.Cmd.__init__(self)
         self.prompt = "sgq> "
-        self.intro = """Hi, this is job queue Processor; type 'q' to quit; '?' for help. enter start to submit job."""
+        self.intro = """MSG: this is job queue Processor; type 'q' to quit; '?' for help. enter start to submit job."""
         resp = commander.showStatus()
         if resp:
-            self.intro += "\nTIP: %s" % resp
+            self.intro += "\nMSG: %s" % resp
 
     def _print(self, string):
         """
@@ -1513,7 +1610,7 @@ def main(argv=None):
     
     # submit job
     if cmdl_opts.file:
-        commander.start(cmdl_opts.file)
+        commander.start(cmdl_opts.file, ask=True)
     else:
         commander.start(ask=True)
     qsg = Interpreter()
@@ -1524,11 +1621,11 @@ if __name__ == "__main__":
 
     global log
     log = logging.getLogger()
-    hldr = logging.FileHandler('/tmp/simple-gaussian-qsub.log', mode="w")
+    hldr = logging.FileHandler('/tmp/simple-gaussian-qsub.log', mode="a")
     format = logging.Formatter("%(asctime)s +%(lineno)04d %(levelname)-7s %(message)s")
     hldr.setFormatter(format)
     log.addHandler(hldr)
     log.setLevel(logging.DEBUG)
-    log.info("start of logging".center(72, "="))
+    log.info(center_string("start of logging", 72, "="))
 
     main()

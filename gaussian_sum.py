@@ -8,9 +8,9 @@
 #        AUTHOR:  win.png@gmail.com (ybyygu) 
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  2006-8-30 
-#       UPDATED:  2007-08-01 16:27
+#       UPDATED:  2007-10-20 16:27
 #===============================================================================#
-__VERSION__ = "0.3"
+__VERSION__ = "0.4"
 
 #===============================================================================#
 #
@@ -25,6 +25,10 @@ import glob
 from stat import *
 import time
 import re
+from math import sqrt
+from math import cos
+from math import sin
+from math import acos
 
 #===============================================================================#
 #
@@ -32,6 +36,124 @@ import re
 #
 #===============================================================================#
 LINELENGTH = 72
+
+ATOMS_TABLE = ('H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na', 'Mg', 'Al', 'Si', 'P', 'S',
+         'Cl', 'Ar', 'K', 'Ca', 'Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge',
+         'As', 'Se', 'Br', 'Kr', 'Rb', 'Sr', 'Y', 'Zr', 'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd',
+         'In', 'Sn', 'Sb', 'Te', 'I', 'Xe', 'Cs', 'Ba', 'La', 'Ce', 'Pr', 'Nd', 'Pm', 'Sm', 'Eu', 'Gd',
+         'Tb', 'Dy', 'Ho', 'Er', 'Tm', 'Yb', 'Lu', 'Hf', 'Ta', 'W', 'Re', 'Os', 'Ir', 'Pt', 'Au', 'Hg',
+         'Tl', 'Pb', 'Bi', 'Po', 'At', 'Rn', 'Fr', 'Ra', 'Ac', 'Th', 'Pa', 'U', 'Np', 'Pu', 'Am', 'Cm',
+         'Bk', 'Cf', 'Es', 'Fm', 'Md', 'No', 'Lr', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt')
+
+#===============================================================================#
+#
+#  classes
+#
+#===============================================================================#
+
+class vector:
+    """
+    Class that represents a atom space vector.
+    """    
+    def __init__(self, x, y, z):
+        self.x = x
+        self.y = y
+        self.z = z
+
+    def length(self):
+        """
+        return the length of vector
+        """
+        return sqrt(self.x**2 + self.y**2 + self.z**2)
+    
+    def distance(self, avector):
+        """
+        return the distance of the two vectors
+        """
+        return sqrt((self.x - avector.x)**2 + (self.y - avector.y)**2 + (self.z - avector.z)**2)
+
+    def dot(self, avector):
+        """
+        dot product
+        """
+        return self.x * avector.x + self.y * avector.y + self.z * avector.z
+
+    def cross(self, avector):
+        """
+        cross product
+        """
+        nx = self.y * avector.z - self.z * avector.y
+        ny = self.z * avector.x - self.x * avector.z
+        nz = self.x * avector.y - self.y * avector.x
+        return vector(nx, ny, nz)
+
+    def __sub__(self, avector):
+        x = self.x - avector.x
+        y = self.y - avector.y
+        z = self.z - avector.z
+        return vector(x, y, z)
+
+    def angle(self, vb, vc):
+        """
+        return the angle between the tree vector points: va(self), vb, vc
+        """
+        vba = self - vb
+        vbc = vc - vb
+        arg = acos(vba.dot(vbc)/vba.length()/vbc.length()) * 180.0 / 3.1415926
+        return arg
+
+    def torsion(self, vb, vc, vd):
+        """
+        return the torsion angle between the four vector points: va, vb, vc, vd
+        """
+        vba = self - vb
+        vbc = vc - vb
+        vcb = vb - vc
+        vcd = vd - vc
+        vbaxbc = vba.cross(vbc)
+        vcbxcd = vcb.cross(vcd)
+        value = vbaxbc.dot(vcbxcd) / vbaxbc.length() / vcbxcd.length()
+        # deal with the float error
+        if value > 1.0:
+            value = 1.0
+        elif value < -1.0:
+            value = -1.0
+        arg = acos(value / vcbxcd.length()) * 180.0 /3.1415926
+        
+        if vba.cross(vbc).dot(vcd) > 0:
+            sign = -1
+        else:
+            sign = 1
+        return arg * sign
+
+class atoms:
+    """
+    represents a list of atoms
+    """
+    def __init__(self):
+        self.atoms = []
+
+    def addAtom(self, x, y, z):
+        atom = vector(x, y, z)
+        self.atoms.append(atom)
+    
+    def bond(self, id1, id2):
+        """
+        return the length of the bond specified by the two atom index numbers
+        """
+        return self.atoms[id1].distance(self.atoms[id2])
+
+    def angle(self, id1, id2, id3):
+        """
+        return the angle of the tree atoms specified by atoms index
+        """
+        return self.atoms[id1].angle(self.atoms[id2], self.atoms[id3])
+
+    def torsion(self, id1, id2, id3, id4):
+        """
+        return the torsion angle of for atoms specified by atoms index
+        """
+        return self.atoms[id1].torsion(self.atoms[id2], self.atoms[id3], self.atoms[id4])
 
 #===============================================================================#
 #
@@ -46,7 +168,65 @@ def centerWithStr(str, char, length):
         nl = (length - len(str))/2
     return char * nl + str + char * nl
 
-def summary_files(gaussian_log_files, output_steps=5, show_all=False, warn_old=False):
+def query_structure(flog, query_string):
+    """
+    query structure information during optimization in gaussian log file.
+    """
+    global LINELENGTH
+
+    atoms_index = query_string.strip().split(",")
+    if len(atoms_index) <2 or len(atoms_index) >4:
+        print "Too many or too few atoms."
+        return False
+
+    try:
+        atoms_index = [int(a) - 1 for a in atoms_index]
+    except ValueError:
+        print "query_string should be atom index number seperated by comma."
+        return False
+
+    #  Number     Number      Type              X           Y           Z
+    # ---------------------------------------------------------------------
+    #    1         14             0       -1.410718    1.965875   -7.017018
+    rex_xyz = re.compile(r'^\s*\d+\s+(\d+)\s+\d+\s+([-0-9.]+\s+[-0-9.]+\s+[-0-9.]+)$')
+
+    line = flog.readline()
+    while line:
+        if re.compile(r'^\s+Standard orientation:\s+$').match(line):
+            # skip 4 lines
+            for i in range(5):
+                line = flog.readline()
+
+            # store the Cartesian coordination 
+            mol = atoms()
+            atom_numbers = []
+            while line and rex_xyz.match(line.strip()):
+                atom_numbers.append(int(rex_xyz.match(line.strip()).group(1)))
+                xyz = rex_xyz.match(line.strip()).group(2).split()
+                xyz = [float(v) for v in xyz]
+                mol.addAtom(xyz[0], xyz[1], xyz[2])
+                line = flog.readline()
+            try:
+                # for bond
+                if len(atoms_index) == 2:
+                    resp = mol.bond(atoms_index[0], atoms_index[1])
+                elif len(atoms_index) == 3:
+                    resp = mol.angle(atoms_index[0], atoms_index[1], atoms_index[2])
+                elif len(atoms_index) == 4:
+                    resp = mol.torsion(atoms_index[0], atoms_index[1], atoms_index[2], atoms_index[3])
+            except IndexError:
+                print "Invalid atoms index."
+                return False
+            symbols = ["%s" % (ATOMS_TABLE[i-1]) for i in [atom_numbers[j] for j in atoms_index]]
+            query = ["%s%s" % (s, i+1) for s,i in zip(symbols, atoms_index)]
+            print "%s:\t%.5f" % (",".join(query), resp)
+
+        line = flog.readline()
+
+    return False
+
+
+def summary_files(gaussian_log_files, output_steps=8, show_all=False, warn_old=False, query_string=""):
     global LINELENGTH
     
     def log_cmp(x, y):
@@ -62,12 +242,25 @@ def summary_files(gaussian_log_files, output_steps=5, show_all=False, warn_old=F
         except IOError:
             print >>stderr, "Can't open %s to read!" %(log)
             continue
+
+        # test if is a gaussian log file
+        # gaussian log file begins with a space
+        line = flog.readline()
+        if not line or not line[0] == ' ':
+            print ' ' + '*'*LINELENGTH
+            print ' this is not a gaussian log file...'
+            continue 
+
         hint = " %s " % basename(log)
         print "[" + centerWithStr(hint, '=', LINELENGTH) + "]"
         if not show_all:
             if read_backwards(flog, output_steps):
                 print " " + ":"* LINELENGTH
-        walklog(flog)
+        if not query_string:
+            walklog(flog)
+        else:
+            query_structure(flog, query_string)
+
         flog.close()
         hint1 = " %s " % dirname(log)
         hint2 = " %s " % basename(log)
@@ -80,16 +273,13 @@ def summary_files(gaussian_log_files, output_steps=5, show_all=False, warn_old=F
             print " ** WARNING! THIS FILE HAS NO CHANGE MORE THAN %d HOURS. **" % span
 
 def walklog(flog):
-    import re
-    
+    """
+    walk the flog and print the essential information
+    """
     global LINELENGTH
+
     line = flog.readline()
     freq_count = 0
-    # gaussian log file begins with a space
-    if not line or not line[0] == ' ':
-        print ' ' + '*'*LINELENGTH
-        print ' this is not a gaussian log file...'
-        return
 
     while line:
         if re.compile(r'^ %').match(line):
@@ -161,12 +351,13 @@ def walklog(flog):
         line = flog.readline()
 
 def read_backwards(fp, maxrounds = 5, sizehint = 20000):
-    """
+    """\
      Step number n-4 out of ... # stop here
      ...
      Step number n-1 out of ...
      Step number n out of ...
     """
+
     # jump to the end of the file
     fp.seek(0, 2)
 
@@ -174,7 +365,7 @@ def read_backwards(fp, maxrounds = 5, sizehint = 20000):
     while round < maxrounds: 
         try:
             fp.seek(-sizehint, 1)
-        except IOError: # hit the top of file
+        except:
             fp.seek(0, 0)
             return False
         fpos = fp.tell()
@@ -188,112 +379,7 @@ def read_backwards(fp, maxrounds = 5, sizehint = 20000):
         else:
             continue
     return True
-
-#===============================================================================#
-#
-#  Class
-#
-#===============================================================================#
-class vector:
-    """
-    Class that represents a atom space vector.
-    """    
-    def __init__(self, x, y, z):
-        self.x = x
-        self.y = y
-        self.z = z
-
-    def length(self):
-        """
-        return the length of vector
-        """
-        return sqrt(self.x**2 + self.y**2 + self.z**2)
-    
-    def distance(self, avector):
-        """
-        return the distance of the two vectors
-        """
-        return sqrt((self.x - avector.x)**2 + (self.y - avector.y)**2 + (self.z - avector.z)**2)
-
-    def dot(self, avector):
-        """
-        dot product
-        """
-        return self.x * avector.x + self.y * avector.y + self.z * avector.z
-
-    def cross(self, avector):
-        """
-        cross product
-        """
-        nx = self.y * avector.z - self.z * avector.y
-        ny = self.z * avector.x - self.x * avector.z
-        nz = self.x * avector.y - self.y * avector.x
-        return vector(nx, ny, nz)
-
-    def __sub__(self, avector):
-        x = self.x - avector.x
-        y = self.y - avector.y
-        z = self.z - avector.z
-        return vector(x, y, z)
-
-    def angle(self, vb, vc):
-        """
-        return the angle between the tree vector points: va(self), vb, vc
-        """
-        vba = self - vb
-        vbc = vc - vb
-        arg = acos(vba.dot(vbc)/vba.length()/vbc.length()) * 180.0 / 3.1415926
-        return arg
-
-    def torsion(self, vb, vc, vd):
-        """
-        return the torsion angle between the four vector points: va, vb, vc, vd
-        """
-        vba = self - vb
-        vbc = vc - vb
-        vcb = vb - vc
-        vcd = vd - vc
-        vbaxbc = vba.cross(vbc)
-        vcbxcd = vcb.cross(vcd)
-        arg = acos(vbaxbc.dot(vcbxcd) / vbaxbc.length() / vcbxcd.length()) * 180.0 /3.1415926
         
-        if vba.cross(vbc).dot(vcd) > 0:
-            sign = -1
-        else:
-            sign = 1
-        return arg * sign
-
-class atoms:
-    def __init__(self):
-        self.atoms = []
-
-    def addAtom(self, x, y, z):
-        atom = vector(x, y, z)
-        self.atoms.append(atom)
-    
-    def bond(self, id1, id2):
-        """
-        return the length of the bond specified by the two atom index numbers
-        """
-        return self.atoms[id1].distance(self.atoms[id2])
-
-    def angle(self, id1, id2, id3):
-        """
-        return the angel of the tree atoms specified by atoms index
-        """
-        return self.atoms[id1].angle(self.atoms[id2], self.atoms[id3])
-
-    def torsion(self, id1, id2, id3, id4):
-        """
-        return the torsion angle of for atoms specified by atoms index
-        """
-        return self.atoms[id1].torsion(self.atoms[id2], self.atoms[id3], self.atoms[id4])
-
-#===============================================================================#
-#
-#  Main Program
-#
-#===============================================================================#
 def main (argv=None):
     import optparse
 
@@ -312,11 +398,17 @@ def main (argv=None):
                             dest='show_all', 
                             default=False,
                             help='output all available optimization steps of each gaussian file.')
+    cmdl_parser.add_option('-q', '--query',
+                            dest='query_string',
+                            default="",
+                            help='query optimization structure information. e.g query bond length: 32,25')
     (cmdl_opts, cmdl_args) = cmdl_parser.parse_args()
 
-    output_steps = 5
+    
+    output_steps = 8
     warn_old = False
-    show_all = True
+    lesser = os.popen("/usr/bin/less", "w")
+    sys.stdout = lesser
     # try to read from default gaussian output directory if no argv specified
     logfiles = []
     if not cmdl_args:
@@ -341,14 +433,17 @@ def main (argv=None):
                 logfiles = glob.glob(join(a, "*.log")) + glob.glob(join(a, "*.out"))
             else:
                 logfiles.append(a)
+    summary_files(logfiles, output_steps = output_steps, 
+                   show_all=cmdl_opts.show_all,
+                   warn_old=warn_old,
+                   query_string=cmdl_opts.query_string)
+    lesser.close()
 
-    # if show all, pipe output into file perusal filter (pager/less/more)
-    if show_all and sys.platform != "win32":
-        lesser = "/usr/bin/less"
-        if os.path.exists(lesser):
-            sys.stdout = os.popen(lesser, "w")
-
-    summary_files(logfiles, output_steps = output_steps, show_all = show_all, warn_old = warn_old)
+#===============================================================================#
+#
+#  Main Program
+#
+#===============================================================================#
 
 if (__name__ == "__main__"):
     result = main(sys.argv)
