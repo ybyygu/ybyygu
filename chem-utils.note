@@ -2,8 +2,10 @@
 #+DATE: {{{modification-time(%Y-%m-%d %H:%m, vc)}}}
 #+SETUPFILE: ~/Notes/common.org
 #+SETUPFILE: ~/Notes/coding.org
+# Created at: [2017-10-17 Tue]
 
 * Memo
+** [2017-10-17 Tue] 使用org-mode来来管理之前写的代码
 * src
 :PROPERTIES:
 :header-args: :tangle scripts/test.py :comments link :padline yes :mkdirp yes :shebang #! /usr/bin/env python3
@@ -18,7 +20,7 @@
   #         NOTES:  ---
   #        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
   #       LICENCE:  GPL version 2 or upper
-  #       CREATED:  <2006-08-30 Wed>
+  #       CREATED:  <2006-08-30 Wed 16:51>
   #       UPDATED:  <>
   #===============================================================================#
 #+end_src
