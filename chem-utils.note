@@ -1,0 +1,30 @@
+#+TITLE: Personal chemistry utilities
+#+DATE: {{{modification-time(%Y-%m-%d %H:%m, vc)}}}
+#+SETUPFILE: ~/Notes/common.org
+#+SETUPFILE: ~/Notes/coding.org
+
+* Memo
+* src
+:PROPERTIES:
+:header-args: :tangle scripts/test.py :comments link :padline yes :mkdirp yes :shebang #! /usr/bin/env python3
+:END:
+** header
+#+begin_src python
+  #===============================================================================#
+  #   DESCRIPTION:  ---
+  #
+  #       OPTIONS:  ---
+  #  REQUIREMENTS:  ---
+  #         NOTES:  ---
+  #        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
+  #       LICENCE:  GPL version 2 or upper
+  #       CREATED:  <2006-08-30 Wed>
+  #       UPDATED:  <>
+  #===============================================================================#
+#+end_src
+
+#+RESULTS:
+
+* Local variables
+# Local Variables:
+# mode: org
