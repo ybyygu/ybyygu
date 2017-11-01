@@ -1,19 +1,29 @@
-#+TITLE: Personal chemistry utilities
+#+TITLE: personal chemistry utilities
 #+DATE: {{{modification-time(%Y-%m-%d %H:%m, vc)}}}
 #+SETUPFILE: ~/Notes/common.org
 #+SETUPFILE: ~/Notes/coding.org
 # Created at: [2017-10-17 Tue]
 
-* Memo
+
+* Memo [0/1]
+** TODO [2017-10-31 Tue] networkx [[https://networkx.github.io/documentation/stable/release/migration_guide_from_1.x_to_2.0.html][Migration guide from 1.X to 2.0]]
 ** [2017-10-17 Tue] 使用org-mode来来管理之前写的代码
-* src
+
+* lib
+** structlog
+** attrs
+** networkx
+
+* go
+** src
 :PROPERTIES:
-:header-args: :tangle scripts/test.py :comments link :padline yes :mkdirp yes :shebang #! /usr/bin/env python3
+:header-args: :tangle go/__init__.py :comments link :padline yes :mkdirp yes :shebang #! /usr/bin/env python3
 :END:
-** header
+*** header
+#+name: 628179c4-3bb6-4ddc-bfbd-4a35162f1c10
 #+begin_src python
   #===============================================================================#
-  #   DESCRIPTION:  ---
+  #   DESCRIPTION:  GO: a Graph-based chemical Objects library
   #
   #       OPTIONS:  ---
   #  REQUIREMENTS:  ---
@@ -25,7 +35,7 @@
   #===============================================================================#
 #+end_src
 
-#+RESULTS:
+* scripts
 
 * Local variables
 # Local Variables:
