@@ -4,8 +4,55 @@
 # created at: [2017-10-17 Tue]
 
 
-* Memo [0/1]
-** TODO [2017-10-31 Tue] networkx [[https://networkx.github.io/documentation/stable/release/migration_guide_from_1.x_to_2.0.html][Migration guide from 1.X to 2.0]]
+* Memo [1/1]
+** DONE [2017-10-31 Tue] 将networkx升级到2.0
+networkx 1.x ==> 2.0 API变动很大
+
+CLOSED: [2017-11-03 Fri 15:18]
+- State "DONE"       from "TODO"       [2017-11-03 Fri 15:18]
+*** notes
+: G.nodes instead of G.nodes()
+: list(G.nodes)
+
+#+BEGIN_EXAMPLE
+  G.nodes is set-like allowing set operations. It is also dict-like in that you
+  can look up node data with G.nodes[n]['weight'].
+#+END_EXAMPLE
+
+#+BEGIN_EXAMPLE
+  You can still use the calling interface G.nodes(data='weight') to iterate over node/data pairs.
+#+END_EXAMPLE
+
+#+BEGIN_EXAMPLE
+  In addition to the dict-like views keys/values/items, G.nodes has a data-view G.nodes.data(‘weight’)
+#+END_EXAMPLE
+
+#+BEGIN_EXAMPLE
+  Replace any use of G.edge with G.adj. The Graph attribute edge has been removed.
+  The attribute G.adj is G.edge in v1 and will work with both versions.
+#+END_EXAMPLE
+
+#+BEGIN_EXAMPLE
+  Change any method with _iter in its name to the version without _iter.
+#+END_EXAMPLE
+
+#+BEGIN_EXAMPLE
+  If you use G.node.items() or similar in v1.x, you can replace it with
+  G.nodes(data=True) which works for v2.x and v1.x. Iterating over G.node` as in
+  for n in G.node: can be replaced with G, as in: for n in G:.
+#+END_EXAMPLE
+
+#+BEGIN_EXAMPLE
+  The Graph attribute node has moved its functionality to G.nodes, so code
+  expected to work with v2.x should use G.nodes. In fact most uses of G.node can
+  be replaced by an idiom that works for both versions. The functionality that
+  can’t easily is: G.node[n]. In v2.x that becomes G.nodes[n] which doesn’t work
+  in v1.x.
+#+END_EXAMPLE
+*** references
+- [[https://networkx.github.io/documentation/stable/release/migration_guide_from_1.x_to_2.0.html][Migration guide from 1.X to 2.0]]
+- [[https://gist.github.com/meagar/ae2c7f1b200d7fa52508][Ultimate rebase-onto-master guide]]
+
 ** [2017-10-17 Tue] 使用org-mode来来管理之前写的代码
 
 * lib
