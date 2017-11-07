@@ -1,5 +1,5 @@
 #! /usr/bin/env python3
-# [[file:~/Workspace/Programming/chem-utils/chem-utils.note::628179c4-3bb6-4ddc-bfbd-4a35162f1c10][628179c4-3bb6-4ddc-bfbd-4a35162f1c10]]
+# [[file:~/Workspace/Programming/chem-utils/chem-utils.note::go-header][go-header]]
 #===============================================================================#
 #   DESCRIPTION:  GO: a Graph-based chemical Objects library
 #
@@ -9,6 +9,13 @@
 #        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  <2006-08-30 Wed 16:51>
-#       UPDATED:  <2017-11-01 Wed 16:09>
+#       UPDATED:  <2017-11-03 Fri 16:24>
 #===============================================================================#
-# 628179c4-3bb6-4ddc-bfbd-4a35162f1c10 ends here
+# go-header ends here
+
+# [[file:~/Workspace/Programming/chem-utils/chem-utils.note::902db43a-44b3-483c-9c70-fbd221f6d4b3][902db43a-44b3-483c-9c70-fbd221f6d4b3]]
+from .lib import attr
+from .lib import graph
+
+from .element import *
+# 902db43a-44b3-483c-9c70-fbd221f6d4b3 ends here
