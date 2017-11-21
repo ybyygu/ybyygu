@@ -21,7 +21,7 @@ For directed graphs see DiGraph and MultiDiGraph.
 from __future__ import division
 import warnings
 from copy import deepcopy
-from collections import Mapping
+from collections import Mapping, OrderedDict
 
 from .coreviews import AtlasView, AdjacencyView
 from .reportviews import NodeView, EdgeView, DegreeView
@@ -1780,3 +1780,19 @@ class Graph(object):
                         raise
             bunch = bunch_iter(nbunch, self._adj)
         return bunch
+
+class OrderedGraph(Graph):
+    """Consistently ordered variant of :class:`~networkx.Graph`."""
+    node_dict_factory = OrderedDict
+    adjlist_outer_dict_factory = OrderedDict
+    adjlist_inner_dict_factory = OrderedDict
+    edge_attr_dict_factory = OrderedDict
+
+    def fresh_copy(self):
+        """Return a fresh copy graph with the same data structure.
+
+        A fresh copy has no nodes, edges or graph attributes. It is
+        the same data structure as the current graph. This method is
+        typically used to create an empty version of the graph.
+        """
+        return OrderedGraph()
