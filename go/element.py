@@ -1,20 +1,6 @@
 #! /usr/bin/env python3
 # [[file:~/Workspace/Programming/chem-utils/chem-utils.note::f1974825-5d2d-42d2-8af8-cdecc4134c89][f1974825-5d2d-42d2-8af8-cdecc4134c89]]
-#===============================================================================#
-#   DESCRIPTION:  GO: a Graph-based chemical Objects library
-#
-#       OPTIONS:  ---
-#  REQUIREMENTS:  ---
-#         NOTES:  ---
-#        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
-#       LICENCE:  GPL version 2 or upper
-#       CREATED:  <2006-08-30 Wed 16:51>
-#       UPDATED:  <2017-11-03 Fri 16:24>
-#===============================================================================#
-
 from enum import Enum
-
-from . import attr
 
 class Element(Enum):
     """

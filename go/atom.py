@@ -1,5 +1,8 @@
 #! /usr/bin/env python3
 # [[file:~/Workspace/Programming/chem-utils/chem-utils.note::58ad1935-58aa-46b6-ab3c-823302d97b32][58ad1935-58aa-46b6-ab3c-823302d97b32]]
+from .lib import attr
+from .element import Element
+
 @attr.s(slots=True, hash=False, cmp=False)
 class Atom(object):
     """repsents a single atom
@@ -10,19 +13,13 @@ class Atom(object):
 
     element = attr.ib(default=Element.carbon, convert=Element)
 
-    _position = attr.ib(default=Point3D(0, 0, 0), convert=Point3D._make, repr=False)
+    _position = attr.ib(default=Point3D(0.0, 0.0, 0.0), convert=Point3D._make, repr=False)
 
     # the index of this atom which will be managed by its parent molecule
     index = attr.ib(default=0)
 
-    # for special purpose
-    tag = attr.ib(default="")
-
     # atomic charge, partial charge
     charge = attr.ib(default=0, repr=False)
-
-    # mm atom type
-    _type = attr.ib(default=None)
 
     # atom's name, e.g.: C1, C13
     _name = attr.ib(default=None)
