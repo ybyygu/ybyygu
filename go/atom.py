@@ -31,14 +31,16 @@ class Atom(object):
 
     __slots__ = ('_data')
 
-    def __init__(self, element=Element.dummy, position=(0, 0, 0), index=0, name=None):
+    def __init__(self, element=Element.dummy, position=(0, 0, 0), index=0, name=None, data=None):
         symbol = Element(element).symbol
         postion = tuple(position)
-        if name is None:
-            name = "{}{}".format(symbol, index)
-        # all data stored in a dict
+        if name is None: name = "{}{}".format(symbol, index)
+        # all data stored in a private dict
         self._data = dict(symbol=symbol, position=position, index=index, name=name)
 
+        # update data
+        if data is not None and issubclass(type(data), dict):
+            self._data.update(data)
 
     @property
     def index(self):
@@ -78,6 +80,7 @@ class Atom(object):
         n = "{}{}".format(self.element.symbol, self.index)
         self._data['name'] = n
         return n
+
 
     @name.setter
     def name(self, new):

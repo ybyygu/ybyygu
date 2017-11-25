@@ -149,8 +149,16 @@ class Element(Enum):
         return obj
 
     def __init__(self, atomic_symbol, atomic_number):
-        self.symbol = atomic_symbol
-        self.number = atomic_number
+        self._symbol = atomic_symbol
+        self._number = atomic_number
+
+    @property
+    def symbol(self):
+        return self._symbol
+
+    @property
+    def number(self):
+        return self._number
 
     def __eq__(self, other):
         if isinstance(other, Element):

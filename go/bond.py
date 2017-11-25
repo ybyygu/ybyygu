@@ -1,7 +1,5 @@
 #! /usr/bin/env python3
 # [[file:~/Workspace/Programming/chem-utils/chem-utils.note::f48ba944-02bd-4ac0-bc39-6713aa91f65f][f48ba944-02bd-4ac0-bc39-6713aa91f65f]]
-import inspect
-
 from enum import Enum
 from collections import namedtuple
 
