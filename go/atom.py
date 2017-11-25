@@ -22,7 +22,6 @@ def Coord(x, y, z, unit="au"):
     return Point3D(x, y, z)
 
 
-@attr.s(slots=True, hash=False, cmp=False)
 class Atom(object):
     """repsents a single atom
 
@@ -30,31 +29,62 @@ class Atom(object):
     >>> atom = Atom(element=Element.carbon, postion=(1.0, 1.0, 1.0))
     """
 
-    element = attr.ib(default=Element.carbon, convert=Element)
+    __slots__ = ('_data')
 
-    _position = attr.ib(default=Point3D(0.0, 0.0, 0.0), convert=Point3D._make, repr=False)
+    def __init__(self, element=Element.dummy, position=(0, 0, 0), index=0, name=None):
+        symbol = Element(element).symbol
+        postion = tuple(position)
+        if name is None:
+            name = "{}{}".format(symbol, index)
+        # all data stored in a dict
+        self._data = dict(symbol=symbol, position=position, index=index, name=name)
 
-    # the index of this atom which will be managed by its parent molecule
-    index = attr.ib(default=0, validator=attr.validators.instance_of(int))
 
-    # atom's name, e.g.: C1, C13
-    _name = attr.ib(default=None)
+    @property
+    def index(self):
+        i = self._data.get('index')
+        if i is not None:
+            return i
+        raise ValueError("no index data")
+
+    @property
+    def element(self):
+        e = self._data.get('symbol')
+        if e is not None:
+            return Element(e)
+        return Element.dummy
+
+    @element.setter
+    def element(self, new):
+        self._data['symbol'] = Element(new).symbol
 
     @property
     def position(self):
-        return self._position
+        r = self._data.get('position')
+        if r is not None:
+            r = Point3D._make(r)
+            return r
+        raise ValueError("no position data")
 
     @position.setter
     def position(self, xyz):
-        self._position = Coord(*xyz)
+        self._data['position'] = tuple(xyz)
 
     @property
     def name(self):
-        return self._name or "{}{}".format(self.element.symbol, self.index)
+        n = self._data.get('name')
+        if n is not None:
+            return n
+        n = "{}{}".format(self.element.symbol, self.index)
+        self._data['name'] = n
+        return n
 
     @name.setter
     def name(self, new):
-        self._name = new
+        self._data['name'] = new
+
+    def update(self, d):
+        self._data.update(d)
 
     def __str__(self):
         return self.to_string()
@@ -67,6 +97,9 @@ class Atom(object):
 
     def to_string(self):
         return "%-6s%18.6f%18.6f%18.6f" % (self.element.symbol, self.position.x, self.position.y, self.position.z)
+
+    def to_dict(self):
+        return self._data.copy()
 
     @classmethod
     def from_string(cls, xyzline):

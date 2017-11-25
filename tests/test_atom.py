@@ -13,7 +13,7 @@ def test_point3d():
 
 def test_atom():
     a = Atom()
-    assert a.element == "C"
+    assert a.element == "X"
 
     a = Atom('H')
     assert a.element == "H"
@@ -36,12 +36,6 @@ def test_atom():
     a.position = Coord(1, 1, 1)
     assert a.position.x == 1
 
-    assert a.index == 0
-    assert a.name == "H0"
-
     a.name = "H12"
     assert a.name == "H12"
-
-    a.index = 12
-    assert a.index == 12
 # 9be685e3-d7fd-4bae-bf51-3b9de9cf3634 ends here
