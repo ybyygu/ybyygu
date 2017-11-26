@@ -25,6 +25,26 @@ def test_atom():
 
     a = Atom(position=(1,1,1))
     assert a.position.x == 1
+    assert a.element == "X"
+
+    a = Atom(element="H")
+    assert a.element == "H"
+
+    a = Atom(element=1)
+    assert a.element == "H"
+
+    d = dict(element="H", name="H12", index=12)
+    a = Atom(data=d)
+    assert a.element == "H"
+    assert a.name == "H12"
+    assert a.index == 12
+    a = Atom(element="C", data=d)
+    assert a.element == "C"
+
+    a = Atom(data=d, name="H13")
+    assert a.name == "H13"
+    a.name = "H14"
+    assert a.name == "H14"
 
     pos = Coord(1.0, 2.3, 8.9, unit='bohr')
     a = Atom("H", pos)
@@ -35,7 +55,4 @@ def test_atom():
 
     a.position = Coord(1, 1, 1)
     assert a.position.x == 1
-
-    a.name = "H12"
-    assert a.name == "H12"
 # 9be685e3-d7fd-4bae-bf51-3b9de9cf3634 ends here
