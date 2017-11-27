@@ -9,7 +9,7 @@
 #        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  <2017-11-21 Tue 16:00>
-#       UPDATED:  <2017-11-24 Fri 17:34>
+#       UPDATED:  <2017-11-27 Mon 09:22>
 #===============================================================================#
 # 66e4879d-9a1b-4038-925b-ae8b8d838935 ends here
 
@@ -133,7 +133,7 @@ def graph_from_mol2file(filename, trajectory=False):
     # store atom attributes in graph nodes
     # -----------------------------------------------------------------------------
     # map symbol and position
-    nodes = ((atom_id, {'symbol':symbol,
+    nodes = ((atom_id, {'element':symbol,
                         "position":position}) for atom_id, symbol, position in data_atoms)
     # map bond order
     edges = ((atom_id1, atom_id2, {'weight': float(bo)}) for atom_id1, atom_id2, bo in data_bonds)
@@ -144,7 +144,7 @@ def graph_from_mol2file(filename, trajectory=False):
 def get_symbols_from_graph(graph):
     """extract atomic symbols from graph node attributes"""
 
-    syms = (sym for _, sym in graph.nodes(data='symbol'))
+    syms = (sym for _, sym in graph.nodes(data='element'))
     return syms
 
 def get_positions_from_graph(graph):
@@ -155,18 +155,16 @@ def get_positions_from_graph(graph):
 def get_atom_from_graph(graph, index):
     """get a atom from graph with index"""
 
-    assert type(index) == int
+    assert type(index) == int, index
     d = graph.nodes[index]
-    symbol, position = d.get('symbol'), d.get('position')
-
-    return Atom(symbol, position, index=index)
+    return Atom(data=d)
 
 def get_atoms_from_graph(graph):
     """extract atom objects from graph nodes"""
 
     atoms = []
     for index, d in graph.nodes(data=True):
-        symbol, position = d.get('symbol'), d.get('position')
+        symbol, position = d.get('element'), d.get('position')
         assert symbol is not None and position is not None
         a = Atom(symbol, position, index=index)
         atoms.append(a)
@@ -174,8 +172,42 @@ def get_atoms_from_graph(graph):
     return atoms
 # 1fe1da74-2e5f-4999-9e6b-ac674946a305 ends here
 
+# [[file:~/Workspace/Programming/chem-utils/chem-utils.note::16beb290-95c4-4fdf-9510-5d2bdb0c560c][16beb290-95c4-4fdf-9510-5d2bdb0c560c]]
+from collections import Mapping, Set
+
+class AtomView(Mapping, Set):
+    """A AtomView class to act as mol.atoms for a Molecule
+    """
+    __slots__ = '_nodes',
+
+    def __init__(self, graph):
+        self._nodes = graph._node
+
+    # Mapping methods
+    def __len__(self):
+        return len(self._nodes)
+
+    def __iter__(self):
+        return iter(self._nodes)
+
+    def __getitem__(self, n):
+        d = self._nodes[n]
+        return Atom(data=d)
+
+    # Set methods
+    def __contains__(self, n):
+        return n in self._nodes
+
+    # AtomView method
+    def __str__(self):
+        return str(list(self))
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, tuple(self))
+# 16beb290-95c4-4fdf-9510-5d2bdb0c560c ends here
+
 # [[file:~/Workspace/Programming/chem-utils/chem-utils.note::24dd16f2-0889-454d-8264-cc8838f72318][24dd16f2-0889-454d-8264-cc8838f72318]]
-@attr.s(slots=True)
+@attr.s()
 class MolecularEntity(object):
     """repsents any singular entity, irrespective of its nature, in order
     to concisely express any type of chemical particle: atom,
@@ -186,6 +218,13 @@ class MolecularEntity(object):
     ----------
     1. http://goldbook.iupac.org/M03986.html
     2. https://en.wikipedia.org/wiki/Molecular_entity
+
+
+    Examples
+    --------
+    >>> M = Molecule()
+    >>> M.add_atom(1, element="C", position=(0, 0, 0))
+    >>> M.add_atoms_from([...])
     """
 
     # core structure: networkx Graph
@@ -200,11 +239,62 @@ class MolecularEntity(object):
     # molecular multiplicy
     multiplicity = attr.ib(default=1, init=False)
 
-    _atoms = attr.ib(default=attr.Factory(list), init=False)
-
     @property
     def atoms(self):
-        return get_atoms_from_graph(self._graph)
+        atoms = AtomView(self._graph)
+        self.__dict__['atoms'] = atoms
+        return atoms
+
+    @property
+    def bonds(self):
+        pass
+
+    def add_atom(self, index, *args, **kwargs):
+        """add a atom into molecule. if the atom already exists,
+        atomic attributes will be updated.
+
+        Parameters
+        ----------
+        index: atomic index, 1-based
+        """
+        self._graph.add_node(index)
+        atom = Atom(index=index, *args, **kwargs)
+        # set a reference
+        self._graph.nodes[index] = atom.data
+
+    def remove_atom(self, index):
+        """remove the indexed atom from molecule
+
+        Parameters
+        ----------
+        index: atom index, int type, 1-based
+        """
+        assert type(index) is int, index
+        self._graph.remove_node(index)
+
+    def add_atoms_from(self):
+        pass
+
+    def remove_atoms_from(self, indices):
+        """remove atoms by indices
+
+        Parameters
+        ----------
+        indices: atom index, 1-based
+        """
+        self._graph.remove_nodes_from(indices)
+
+    def add_bond(self):
+        pass
+
+    def remove_bond(self):
+        pass
+
+    def add_bonds_from(self):
+        pass
+
+    def remove_bonds_from(self):
+        pass
 # 24dd16f2-0889-454d-8264-cc8838f72318 ends here
 
 # [[file:~/Workspace/Programming/chem-utils/chem-utils.note::c0a96813-be11-47c2-aee4-3d7cd7a39acf][c0a96813-be11-47c2-aee4-3d7cd7a39acf]]
