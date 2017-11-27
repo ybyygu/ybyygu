@@ -9,7 +9,7 @@
 #        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  <2017-11-21 Tue 16:00>
-#       UPDATED:  <2017-11-27 Mon 09:22>
+#       UPDATED:  <2017-11-27 Mon 18:25>
 #===============================================================================#
 # 66e4879d-9a1b-4038-925b-ae8b8d838935 ends here
 
@@ -226,18 +226,17 @@ class MolecularEntity(object):
     >>> M.add_atom(1, element="C", position=(0, 0, 0))
     >>> M.add_atoms_from([...])
     """
-
-    # core structure: networkx Graph
-    _graph = attr.ib(default=attr.Factory(Graph), init=False)
-
     # the title for molecule/atoms
     title = attr.ib(default="molecular entity", validator=attr.validators.instance_of(str))
 
     # molecular charge
-    charge = attr.ib(default=0, init=False)
+    charge = attr.ib(default=0)
 
     # molecular multiplicy
-    multiplicity = attr.ib(default=1, init=False)
+    multiplicity = attr.ib(default=1)
+
+    # core structure: networkx Graph
+    _graph = attr.ib(default=attr.Factory(Graph), init=False)
 
     @property
     def atoms(self):
@@ -257,10 +256,8 @@ class MolecularEntity(object):
         ----------
         index: atomic index, 1-based
         """
-        self._graph.add_node(index)
         atom = Atom(index=index, *args, **kwargs)
-        # set a reference
-        self._graph.nodes[index] = atom.data
+        self._graph.add_node(index, **atom.data)
 
     def remove_atom(self, index):
         """remove the indexed atom from molecule
@@ -272,8 +269,16 @@ class MolecularEntity(object):
         assert type(index) is int, index
         self._graph.remove_node(index)
 
-    def add_atoms_from(self):
-        pass
+    def add_atoms_from(self, atoms):
+        """add multiple atoms.
+
+        Parameters
+        ----------
+        atoms: iterable container of (index, dict) tuples
+        """
+        assert len(atoms) > 0, atoms
+        assert len(atoms[0]) == 2, atoms[0]
+        self._graph.add_nodes_from(atoms)
 
     def remove_atoms_from(self, indices):
         """remove atoms by indices
