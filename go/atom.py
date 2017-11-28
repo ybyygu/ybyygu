@@ -2,7 +2,6 @@
 # [[file:~/Workspace/Programming/chem-utils/chem-utils.note::58ad1935-58aa-46b6-ab3c-823302d97b32][58ad1935-58aa-46b6-ab3c-823302d97b32]]
 from collections import namedtuple
 
-from .lib import attr
 from .element import Element
 
 _bohr2ang = 0.529177
