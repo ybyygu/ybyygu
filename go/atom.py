@@ -78,11 +78,9 @@ class Atom(object):
 
     @property
     def position(self):
-        r = self._data.get('position')
-        if r is not None:
-            r = Point3D._make(r)
-            return r
-        raise ValueError("no position data")
+        r = self._data.get('position', (0, 0, 0))
+        r = Point3D._make(r)
+        return r
 
     @position.setter
     def position(self, xyz):
@@ -100,31 +98,52 @@ class Atom(object):
     def name(self, new):
         self._data['name'] = new
 
-    def update(self, d):
-        self._data.update(d)
+    def update(self, d=None, **kwargs):
+        """update atomic attributes
+
+        Parameters
+        ----------
+        d: Atom instance or dict like object containing atom attributes
+        kwargs: attributes specified in keyword arguments
+
+        Examples
+        --------
+        >>> atom.update(dict(element='Fe', fragment=2))
+        >>> atom.update(element='Fe', fragment=2)
+        >>> atom = Atom(element='Fe', index=21)
+        >>> atom2 = Atom()
+        >>> atom2.update(atom)
+        """
+        if d is not None:
+            if type(d) is Atom:
+                self._data.update(d.data)
+            else:
+                self._data.update(d)
+        if kwargs:
+            self._data.update(kwargs)
+
 
     def __str__(self):
         return self.to_string()
 
     def __hash__(self):
-        return id(self)
+        # by dict data
+        return id(self._data)
 
     def __eq__(self, other):
-        return id(self) == id(other)
+        # by dict data
+        return id(self._data) == id(other._data)
 
     def to_string(self):
         return "%-6s%18.6f%18.6f%18.6f" % (self.element.symbol, self.position.x, self.position.y, self.position.z)
 
     def to_dict(self):
+        # return a new dict
         return self._data.copy()
 
     @property
-    def data(self):
+    def data(self):             # readonly
         return self._data
-
-    @data.setter
-    def data(self, new):
-        self._data = new
 
     @classmethod
     def from_string(cls, xyzline):

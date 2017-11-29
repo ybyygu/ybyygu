@@ -5,6 +5,8 @@ from collections import namedtuple
 
 from .atom import Atom
 
+__all__ = ("BondOrder", "Bond")
+
 class BondOrder(Enum):
     """https://en.wikipedia.org/wiki/Bond_order"""
     disconnected =  0.0

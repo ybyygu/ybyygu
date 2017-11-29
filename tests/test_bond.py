@@ -18,4 +18,8 @@ def test_bond():
 
     assert b.atom1.element == "C"
     assert b.atom2.element == "H"
+
+    # atom1, atom2 in bond are bounded references
+    a1.element = "Si"
+    assert b.atom1.element == "Si"
 # bd6eb98c-99c7-4722-9cf3-a7747d6be795 ends here

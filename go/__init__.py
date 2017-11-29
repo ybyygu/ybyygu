@@ -5,11 +5,11 @@
 #
 #       OPTIONS:  ---
 #  REQUIREMENTS:  ---
-#         NOTES:  a rewrite from scratch, for the 4th time
+#         NOTES:  rewrite from scratch, for the 4th time
 #        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  <2006-08-30 Wed 16:51>
-#       UPDATED:  <2017-11-24 Fri 15:10>
+#       UPDATED:  <2017-11-28 Tue 11:46>
 #===============================================================================#
 # go-header ends here
 

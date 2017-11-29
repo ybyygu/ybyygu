@@ -11,7 +11,7 @@ def test_point3d():
     x, y, z = p1
     assert x == 1 and y == 2 and z == 3
 
-def test_atom():
+def test_atom_init():
     a = Atom()
     assert a.element == "X"
 
@@ -55,4 +55,27 @@ def test_atom():
 
     a.position = Coord(1, 1, 1)
     assert a.position.x == 1
+
+def test_atom_conversion():
+    d = dict(element=12, index=9, position=(1.2, 1.1, 1.0))
+    a = Atom()
+    a.update(d)
+    id1 = id(a)
+    assert a.data['index'] == 9
+    assert a.index == 9
+    assert a.element == "Mg"
+
+    d['index'] = 10
+    assert a.index == 9
+
+    b = Atom(index=1, name='good')
+    a.update(b, other=4, name='ok')
+    assert a.index == 1
+    assert a.name == 'ok'
+    assert a.data['other'] == 4
+
+
+    dd = a.to_dict()
+    assert dd['name'] == 'ok'
+    assert id1 != id(dd)
 # 9be685e3-d7fd-4bae-bf51-3b9de9cf3634 ends here

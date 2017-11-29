@@ -9,13 +9,14 @@
 #        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  <2017-11-21 Tue 16:00>
-#       UPDATED:  <2017-11-28 Tue 11:41>
+#       UPDATED:  <2017-11-28 Tue 15:56>
 #===============================================================================#
 # 66e4879d-9a1b-4038-925b-ae8b8d838935 ends here
 
 # [[file:~/Workspace/Programming/chem-utils/chem-utils.note::3c5dcd20-6b5f-45f8-b7f0-a90acd3d9024][3c5dcd20-6b5f-45f8-b7f0-a90acd3d9024]]
+import itertools
+
 from collections import namedtuple, Counter, OrderedDict
-from itertools import count
 from functools import lru_cache  # required python >= 3.2
 
 from .lib import graph
@@ -232,6 +233,22 @@ class MolecularEntity(object):
 # [[file:~/Workspace/Programming/chem-utils/chem-utils.note::c0a96813-be11-47c2-aee4-3d7cd7a39acf][c0a96813-be11-47c2-aee4-3d7cd7a39acf]]
 Molecule = MolecularEntity
 # c0a96813-be11-47c2-aee4-3d7cd7a39acf ends here
+
+# [[file:~/Workspace/Programming/chem-utils/chem-utils.note::f7d75dd8-16e3-47b4-aa7b-70e3ce06f2f1][f7d75dd8-16e3-47b4-aa7b-70e3ce06f2f1]]
+def molecule_from_xyzfile(filename):
+    """a quick and dirty way to create molecule graph from xyz file"""
+
+    ic = itertools.count(start=1)
+    mol = Molecule('origin file: {}'.format(filename))
+    with open(filename) as fp:
+        for line in fp:
+            attrs = line.split()
+            if len(attrs) == 4:
+                symbol, x, y, z = attrs
+                position = [float(a) for a in (x, y, z)]
+                mol.add_atom(index=next(ic), element=symbol, position=position)
+    return mol
+# f7d75dd8-16e3-47b4-aa7b-70e3ce06f2f1 ends here
 
 # [[file:~/Workspace/Programming/chem-utils/chem-utils.note::6b83e92c-fd6c-42a4-8723-13f3b89a54f8][6b83e92c-fd6c-42a4-8723-13f3b89a54f8]]
 import re
