@@ -98,6 +98,10 @@ class Atom(object):
     def name(self, new):
         self._data['name'] = new
 
+    @property
+    def id(self):
+        return hash(self)
+
     def update(self, d=None, **kwargs):
         """update atomic attributes
 
