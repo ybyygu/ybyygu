@@ -9,7 +9,7 @@
 #        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  <2017-11-21 Tue 16:00>
-#       UPDATED:  <2017-11-30 Thu 15:29>
+#       UPDATED:  <2017-11-30 Thu 16:03>
 #===============================================================================#
 # 66e4879d-9a1b-4038-925b-ae8b8d838935 ends here
 
@@ -101,19 +101,22 @@ class AtomsView(KeysView):
     --------
     """
 
-    __slots__ = ("_mapping", "_mapping_atoms")
+    __slots__ = ("_mapping", "_mapping_nodes")
 
     def __init__(self, graph):
-        self._mapping = graph.graph['indices']  # mapping indices <==> atoms
-        self._mapping_atoms = graph._node       # graph.add_node(atom, ...)
+        self._mapping = graph.graph['indices']  # mapping index ==> atom.id
+        self._mapping_nodes = graph._node       # graph.add_node(atom.id, ...)
 
     def __getitem__(self, n):
         atom_id = self._mapping[n]
-        atom = Atom(data=self._mapping_atoms[atom_id])
+        atom = Atom(data=self._mapping_nodes[atom_id])
         return atom
 
     def __str__(self):
         return str(list(self))
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, list(self._mapping.keys()))
 # b01be335-9caa-42b7-aa35-38fddebfc2b9 ends here
 
 # [[file:~/Workspace/Programming/chem-utils/chem-utils.note::24dd16f2-0889-454d-8264-cc8838f72318][24dd16f2-0889-454d-8264-cc8838f72318]]
@@ -136,12 +139,13 @@ class MolecularEntity(object):
     >>> M.add_atoms_from([...])
     """
 
-    __slots__ = ("_graph", "_atoms")
+    __slots__ = ("_graph", "_atoms", "_mapping")
 
     def __init__(self, title="molecular entity", charge=0, multiplicity=1):
         # core structure: networkx Graph
         self._graph = Graph(title=title, charge=charge, multiplicity=multiplicity, indices={})
         self._atoms = AtomsView(self._graph)
+        self._mapping = self._graph.graph['indices']  # mapping atomic index to atom instance id
 
     @property
     def charge(self):
@@ -183,11 +187,11 @@ class MolecularEntity(object):
         ----------
         index: atomic index, 1-based
         """
-        atom_id = self._get_atom_id(index)
+        atom_id = self._mapping.get(index)
+        atom = Atom(index=index, *args, **kwargs)
         if atom_id is None:
-            atom = Atom(index=index, *args, **kwargs)
             atom_id = atom.id
-            self._update_atom_id(index, atom_id)
+            self._mapping[index] = atom_id
         self._graph.add_node(atom_id, **atom.data)
 
     def remove_atom(self, index):
@@ -198,18 +202,12 @@ class MolecularEntity(object):
         index: atom index, int type, 1-based
         """
         assert type(index) is int, index
-        atom_id = self._get_atom_id(index)
+        atom_id = self._mapping.get(index)
         if atom_id:
+            self._mapping.pop(index)
             self._graph.remove_node(atom_id)
         else:
             raise KeyError("index not found: {}".format(index))
-
-    def _get_atom_id(self, index):
-        # return None if not found
-        return self._graph.graph['indices'].get(index)
-
-    def _update_atom_id(self, index, atom_id):
-        self._graph.graph['indices'][index] = atom_id
 
     def add_atoms_from(self, atoms):
         """add multiple atoms.
@@ -228,7 +226,7 @@ class MolecularEntity(object):
         ----------
         indices: atom index, 1-based
         """
-        atom_ids = (self._get_atom_id(x) for x in indices)
+        atom_ids = (self._mapping[x] for x in indices)
         raise NotImplementedError
 
     def add_bond(self, index1, index2):
