@@ -26,8 +26,9 @@ def test_molecule_add_atom():
     assert mol.atoms[1].element == 'Fe'
 
     # iteration
-    for x in mol.atoms:
-        pass
+    for a in mol.atoms:
+        assert a.element == "Fe"
+        break
 
     # remove atom
     mol.remove_atom(1)

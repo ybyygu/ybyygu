@@ -9,7 +9,7 @@
 #        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  <2017-11-21 Tue 16:00>
-#       UPDATED:  <2017-12-01 Fri 09:59>
+#       UPDATED:  <2017-12-01 Fri 10:56>
 #===============================================================================#
 # 66e4879d-9a1b-4038-925b-ae8b8d838935 ends here
 
@@ -154,6 +154,9 @@ class AtomsView(KeysView):
         self._mapping_nodes = graph._node       # graph.add_node(atom.id, ...)
         self.iloc = _IlocWrapper(self)
 
+    def __iter__(self):
+        yield from (self[k] for k in self._mapping)
+
     def __getitem__(self, n):
         atom_id = self._mapping[n]
         atom = Atom(data=self._mapping_nodes[atom_id])
@@ -225,6 +228,13 @@ class MolecularEntity(object):
     @property
     def bonds(self):
         return self._graph.edges()
+
+    @property
+    def formula(self):
+        """the brute formula of the Molecule. i.e. 'H2O'"""
+
+        symbols = tuple(a.element.symbol for a in self.atoms)
+        return get_reduced_formula(symbols)
 
     def add_atom(self, index, *args, **kwargs):
         """add a atom into molecule. if the atom already exists,
