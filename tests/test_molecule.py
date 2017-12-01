@@ -21,7 +21,6 @@ def test_molecule_add_atom():
     assert mol.atoms[1].index == 1
 
     # update atom attributes
-
     mol.add_atom(1, element='Fe')
     assert len(mol.atoms) == 2
     assert mol.atoms[1].element == 'Fe'
@@ -36,6 +35,16 @@ def test_molecule_add_atom():
     assert mol.atoms[2].element == "C"
     assert mol.atoms[2].index == 2
 
+def test_molecule_reorder():
+    mol = Molecule()
+    mol.add_atom(1, element='H')
+    mol.add_atom(5, element='Fe')
+    mol.add_atom(2, element='H')
+    assert mol.atoms[5].index == 5
+    assert mol.atoms[5].element == 'Fe'
+
+    mol.reorder()
+    assert mol.atoms[3].element == "Fe"
 
 def test_molecule_add_atoms_from():
     d = ((1, dict(element="H", position=(1, 1, 1))),

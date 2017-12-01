@@ -9,7 +9,7 @@
 #        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  <2017-11-21 Tue 16:00>
-#       UPDATED:  <2017-11-30 Thu 16:03>
+#       UPDATED:  <2017-11-30 Thu 16:38>
 #===============================================================================#
 # 66e4879d-9a1b-4038-925b-ae8b8d838935 ends here
 
@@ -116,7 +116,7 @@ class AtomsView(KeysView):
         return str(list(self))
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, list(self._mapping.keys()))
+        return '%s(%r)' % (self.__class__.__name__, tuple(self._mapping.keys()))
 # b01be335-9caa-42b7-aa35-38fddebfc2b9 ends here
 
 # [[file:~/Workspace/Programming/chem-utils/chem-utils.note::24dd16f2-0889-454d-8264-cc8838f72318][24dd16f2-0889-454d-8264-cc8838f72318]]
@@ -209,6 +209,22 @@ class MolecularEntity(object):
         else:
             raise KeyError("index not found: {}".format(index))
 
+    def reorder(self):
+        """reorder the atoms by renumbering atomic index attributes"""
+
+        ic = itertools.count(start=1)
+        new_indices = {}
+        for k in sorted(self._mapping.keys()):
+            index = next(ic)
+            node = self._mapping[k]
+            new_indices[index] = node
+            self._graph.nodes[node]['index'] = index
+
+        # update indices
+        self._mapping.clear()
+        self._mapping.update(new_indices)
+
+
     def add_atoms_from(self, atoms):
         """add multiple atoms.
 
@@ -239,9 +255,6 @@ class MolecularEntity(object):
         pass
 
     def remove_bonds_from(self):
-        pass
-
-    def reorder(self):
         pass
 # 24dd16f2-0889-454d-8264-cc8838f72318 ends here
 
