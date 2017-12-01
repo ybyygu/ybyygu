@@ -53,4 +53,15 @@ def test_molecule_add_atoms_from():
 
     mol = Molecule()
     mol.add_atoms_from(d)
+
+def test_molecule_atoms_iloc():
+    mol = Molecule()
+    mol.add_atom(1, element='H')
+    mol.add_atom(5, element='Fe')
+    mol.add_atom(2, element='H')
+    mol.add_atom(3, element='B')
+    assert mol.atoms.iloc[0].element == "H"
+    assert mol.atoms.iloc[-1].element == "Fe"
+    atoms = mol.atoms.iloc[:-1]
+    assert atoms[-1].element == "B"
 # f79546aa-456d-406d-9378-9e3223b608b4 ends here

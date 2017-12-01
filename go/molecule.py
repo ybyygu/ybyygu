@@ -9,7 +9,7 @@
 #        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  <2017-11-21 Tue 16:00>
-#       UPDATED:  <2017-11-30 Thu 16:38>
+#       UPDATED:  <2017-12-01 Fri 09:59>
 #===============================================================================#
 # 66e4879d-9a1b-4038-925b-ae8b8d838935 ends here
 
@@ -90,22 +90,69 @@ def get_atoms_from_graph(graph):
     return atoms
 # 1fe1da74-2e5f-4999-9e6b-ac674946a305 ends here
 
+# [[file:~/Workspace/Programming/chem-utils/chem-utils.note::02cb9c34-f76b-4e6c-8411-9e55ef729274][02cb9c34-f76b-4e6c-8411-9e55ef729274]]
+class _IlocWrapper(object):
+    """positional indexing support for AtomsView object.
+
+    Adopted from: https://github.com/grantjenks/sorted_containers/blob/master/sortedcontainers/sorteddict.py
+    """
+    __slots__ = ("_view")
+
+    def __init__(self, view):
+        self._view = view
+
+    def __len__(self):
+        return len(self._view)
+
+    def __getitem__(self, index):
+        """return the key at index *index* in iteration. Supports negative indices
+        and slice notation. Raises IndexError on invalid *index*.
+        """
+        d = self._view._mapping
+        indices = (k for k in sorted(d.keys()))
+
+        if not isinstance(index, slice):
+            if index < 0:
+                maxn = len(self._view)
+                index += maxn
+            k = next(itertools.islice(indices, index, index+1))
+            return self._view[k]
+
+        # negative stop
+        start, stop = index.start, index.stop
+        if stop is not None and stop < 0 :
+            maxn = len(self._view)
+            stop += maxn
+            print(maxn, start, stop)
+        print(start, stop)
+
+        selected = itertools.islice(indices, start, stop, index.step)
+        return [self._view[k] for k in selected]
+# 02cb9c34-f76b-4e6c-8411-9e55ef729274 ends here
+
 # [[file:~/Workspace/Programming/chem-utils/chem-utils.note::b01be335-9caa-42b7-aa35-38fddebfc2b9][b01be335-9caa-42b7-aa35-38fddebfc2b9]]
 class AtomsView(KeysView):
     """A AtomsView class to act as molecule.atoms for a Molecule instance
 
     Parameters
     ----------
+    AtomsView(molecule._graph)
 
     Examples
     --------
+    >>> atoms[5]
+    >>> len(atoms)
+    >>> atoms.iloc[1:5]
+    >>> atoms.iloc[-1]
+    >>> atoms.iloc[:-1]
     """
 
-    __slots__ = ("_mapping", "_mapping_nodes")
+    __slots__ = ("_mapping", "_mapping_nodes", "iloc")
 
     def __init__(self, graph):
         self._mapping = graph.graph['indices']  # mapping index ==> atom.id
         self._mapping_nodes = graph._node       # graph.add_node(atom.id, ...)
+        self.iloc = _IlocWrapper(self)
 
     def __getitem__(self, n):
         atom_id = self._mapping[n]
@@ -223,7 +270,6 @@ class MolecularEntity(object):
         # update indices
         self._mapping.clear()
         self._mapping.update(new_indices)
-
 
     def add_atoms_from(self, atoms):
         """add multiple atoms.
