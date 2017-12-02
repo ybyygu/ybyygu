@@ -9,7 +9,7 @@
 #        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  <2017-11-21 Tue 16:00>
-#       UPDATED:  <2017-12-01 Fri 10:56>
+#       UPDATED:  <2017-12-01 Fri 11:18>
 #===============================================================================#
 # 66e4879d-9a1b-4038-925b-ae8b8d838935 ends here
 
@@ -252,7 +252,7 @@ class MolecularEntity(object):
         self._graph.add_node(atom_id, **atom.data)
 
     def remove_atom(self, index):
-        """remove the indexed atom from molecule
+        """remove the atom *index* from molecule
 
         Parameters
         ----------
@@ -301,11 +301,35 @@ class MolecularEntity(object):
         atom_ids = (self._mapping[x] for x in indices)
         raise NotImplementedError
 
-    def add_bond(self, index1, index2):
-        pass
+    def add_bond(self, index1, index2, order=1):
+        """Add a bond between two atoms.
+
+        Parameters
+        ----------
+        index1, index2: atom indices of atom1 and atom2
+        order: bond order
+
+        Raises
+        ------
+        If there is no atom index1 or index2 in molecule, raise KeyError.
+        """
+        n1, n2 = self._mapping[index1], self._mapping[index2]
+        self._graph.add_edge(n1, n2, order=order)
 
     def remove_bond(self, index1, index2):
-        pass
+        """remove a bond between two atoms
+
+        Parameters
+        ----------
+        index1, index2: atom indices of atom1 and atom2
+
+        Raises
+        ------
+        If there is no atom *index1* or *index2* in molecule, raise KeyError
+        If there is no bond between *index1* and *index2*, raise NetworkXError
+        """
+        n1, n2 = self._mapping[index1], self._mapping[index2]
+        self._graph.remove_edge(n1, n2)
 
     def add_bonds_from(self):
         pass
