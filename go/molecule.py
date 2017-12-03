@@ -9,7 +9,7 @@
 #        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  <2017-11-21 Tue 16:00>
-#       UPDATED:  <2017-12-03 Sun 14:00>
+#       UPDATED:  <2017-12-03 Sun 16:30>
 #===============================================================================#
 # 66e4879d-9a1b-4038-925b-ae8b8d838935 ends here
 
@@ -108,7 +108,7 @@ class _IlocWrapper(object):
         """return the key at index *index* in iteration. Supports negative indices
         and slice notation. Raises IndexError on invalid *index*.
         """
-        d = self._view._mapping
+        d = self._view._mapping_nodes
         indices = (k for k in sorted(d.keys()))
 
         if not isinstance(index, slice):
@@ -150,23 +150,23 @@ class AtomsView(KeysView):
     __slots__ = ("_mapping", "_mapping_nodes", "iloc")
 
     def __init__(self, graph):
-        self._mapping = graph.graph['indices']  # mapping index ==> atom.id
-        self._mapping_nodes = graph._node       # graph.add_node(atom.id, ...)
+        self._mapping_nodes = graph.graph['indices']  # mapping index ==> atom.id
+        self._mapping = graph._node       # graph.add_node(atom.id, ...)
         self.iloc = _IlocWrapper(self)
 
     def __iter__(self):
-        yield from (self[k] for k in self._mapping)
+        yield from (self[k] for k in self._mapping_nodes)
 
     def __getitem__(self, n):
-        atom_id = self._mapping[n]
-        atom = Atom(data=self._mapping_nodes[atom_id])
+        atom_id = self._mapping_nodes[n]
+        atom = Atom(data=self._mapping[atom_id])
         return atom
 
     def __str__(self):
         return str(list(self))
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, tuple(self._mapping.keys()))
+        return '%s(%r)' % (self.__class__.__name__, tuple(self._mapping_nodes.keys()))
 # b01be335-9caa-42b7-aa35-38fddebfc2b9 ends here
 
 # [[file:~/Workspace/Programming/chem-utils/chem-utils.note::a04302b0-282b-4af1-aa0b-aa30df4faf87][a04302b0-282b-4af1-aa0b-aa30df4faf87]]
@@ -195,14 +195,14 @@ class BondsView(KeysView):
     def __getitem__(self, e):
         u, v = e
         atom_id1, atom_id2 = self._mapping_nodes[u], self._mapping_nodes[v]
-        d = self._mapping_edges[(atom_id1, atom_id2)]
+        d = self._mapping[(atom_id1, atom_id2)]
         bond = Bond(atom_id1, atom_id2, order=d.get('order', 1))
         return bond
 
     def __contains__(self, e):
         u, v = e
         e = self._mapping_nodes[u], self._mapping_nodes[v]
-        return e in self._mapping_edges
+        return e in self._mapping
 
     def __str__(self):
         return str(list(self))
@@ -231,13 +231,13 @@ class MolecularEntity(object):
     >>> M.add_atoms_from([...])
     """
 
-    __slots__ = ("_graph", "_atoms", "_mapping")
+    __slots__ = ("_graph", "_atoms", "_mapping_nodes")
 
     def __init__(self, title="molecular entity", charge=0, multiplicity=1):
         # core structure: networkx Graph
         self._graph = Graph(title=title, charge=charge, multiplicity=multiplicity, indices={})
         self._atoms = AtomsView(self._graph)
-        self._mapping = self._graph.graph['indices']  # mapping atomic index to atom instance id
+        self._mapping_nodes = self._graph.graph['indices']  # mapping atomic index to atom instance id
 
     @property
     def charge(self):
@@ -286,11 +286,11 @@ class MolecularEntity(object):
         ----------
         index: atomic index, 1-based
         """
-        atom_id = self._mapping.get(index)
+        atom_id = self._mapping_nodes.get(index)
         atom = Atom(index=index, *args, **kwargs)
         if atom_id is None:
             atom_id = atom.id
-            self._mapping[index] = atom_id
+            self._mapping_nodes[index] = atom_id
         self._graph.add_node(atom_id, **atom.data)
 
     def remove_atom(self, index):
@@ -301,9 +301,9 @@ class MolecularEntity(object):
         index: atom index, int type, 1-based
         """
         assert type(index) is int, index
-        atom_id = self._mapping.get(index)
+        atom_id = self._mapping_nodes.get(index)
         if atom_id:
-            self._mapping.pop(index)
+            self._mapping_nodes.pop(index)
             self._graph.remove_node(atom_id)
         else:
             raise KeyError("index not found: {}".format(index))
@@ -313,15 +313,15 @@ class MolecularEntity(object):
 
         ic = itertools.count(start=1)
         new_indices = {}
-        for k in sorted(self._mapping.keys()):
+        for k in sorted(self._mapping_nodes.keys()):
             index = next(ic)
-            node = self._mapping[k]
+            node = self._mapping_nodes[k]
             new_indices[index] = node
             self._graph.nodes[node]['index'] = index
 
         # update indices
-        self._mapping.clear()
-        self._mapping.update(new_indices)
+        self._mapping_nodes.clear()
+        self._mapping_nodes.update(new_indices)
 
     def add_atoms_from(self, atoms):
         """add multiple atoms.
@@ -340,7 +340,7 @@ class MolecularEntity(object):
         ----------
         indices: atom index, 1-based
         """
-        atom_ids = (self._mapping[x] for x in indices)
+        atom_ids = (self._mapping_nodes[x] for x in indices)
         raise NotImplementedError
 
     def add_bond(self, index1, index2, order=1):
@@ -355,7 +355,7 @@ class MolecularEntity(object):
         ------
         If there is no atom index1 or index2 in molecule, raise KeyError.
         """
-        n1, n2 = self._mapping[index1], self._mapping[index2]
+        n1, n2 = self._mapping_nodes[index1], self._mapping_nodes[index2]
         self._graph.add_edge(n1, n2, order=order)
 
     def remove_bond(self, index1, index2):
@@ -370,7 +370,7 @@ class MolecularEntity(object):
         If there is no atom *index1* or *index2* in molecule, raise KeyError
         If there is no bond between *index1* and *index2*, raise NetworkXError
         """
-        n1, n2 = self._mapping[index1], self._mapping[index2]
+        n1, n2 = self._mapping_nodes[index1], self._mapping_nodes[index2]
         self._graph.remove_edge(n1, n2)
 
     def add_bonds_from(self):
