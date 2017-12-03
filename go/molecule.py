@@ -9,7 +9,7 @@
 #        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  <2017-11-21 Tue 16:00>
-#       UPDATED:  <2017-12-01 Fri 11:18>
+#       UPDATED:  <2017-12-03 Sun 14:00>
 #===============================================================================#
 # 66e4879d-9a1b-4038-925b-ae8b8d838935 ends here
 
@@ -132,7 +132,7 @@ class _IlocWrapper(object):
 
 # [[file:~/Workspace/Programming/chem-utils/chem-utils.note::b01be335-9caa-42b7-aa35-38fddebfc2b9][b01be335-9caa-42b7-aa35-38fddebfc2b9]]
 class AtomsView(KeysView):
-    """A AtomsView class to act as molecule.atoms for a Molecule instance
+    """An AtomsView class to act as molecule.atoms for a Molecule instance
 
     Parameters
     ----------
@@ -168,6 +168,48 @@ class AtomsView(KeysView):
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, tuple(self._mapping.keys()))
 # b01be335-9caa-42b7-aa35-38fddebfc2b9 ends here
+
+# [[file:~/Workspace/Programming/chem-utils/chem-utils.note::a04302b0-282b-4af1-aa0b-aa30df4faf87][a04302b0-282b-4af1-aa0b-aa30df4faf87]]
+class BondsView(KeysView):
+    """A BondsView class to act as molecule.bonds for a Molecule instance
+
+    Parameters
+    ----------
+    BondsView(molecule._graph)
+
+    Examples
+    --------
+    >>> bonds[(1, 2)]
+    >>> len(bonds)
+    """
+
+    __slots__ = ("_mapping", "_mapping_nodes")
+
+    def __init__(self, graph):
+        self._mapping = graph.edges
+        self._mapping_nodes = graph.graph['indices']  # mapping index ==> atom.id
+
+    def __iter__(self):
+        yield from (self[e] for e in self._mapping)
+
+    def __getitem__(self, e):
+        u, v = e
+        atom_id1, atom_id2 = self._mapping_nodes[u], self._mapping_nodes[v]
+        d = self._mapping_edges[(atom_id1, atom_id2)]
+        bond = Bond(atom_id1, atom_id2, order=d.get('order', 1))
+        return bond
+
+    def __contains__(self, e):
+        u, v = e
+        e = self._mapping_nodes[u], self._mapping_nodes[v]
+        return e in self._mapping_edges
+
+    def __str__(self):
+        return str(list(self))
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, tuple(self._mapping.keys()))
+# a04302b0-282b-4af1-aa0b-aa30df4faf87 ends here
 
 # [[file:~/Workspace/Programming/chem-utils/chem-utils.note::24dd16f2-0889-454d-8264-cc8838f72318][24dd16f2-0889-454d-8264-cc8838f72318]]
 class MolecularEntity(object):
