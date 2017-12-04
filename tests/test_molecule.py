@@ -36,6 +36,21 @@ def test_molecule_add_atom():
     assert mol.atoms[2].element == "C"
     assert mol.atoms[2].index == 2
 
+def test_molecule_add_remove_atoms():
+    mol = Molecule('test')
+    d = {1: dict(element='H', position=(0, 0, 0)),
+         2: dict(element='B', position=(1, 1, 1)),
+         3: dict(element='Fe', position=(2, 2, 2))}
+
+    mol.add_atoms_from(d)
+    assert len(mol.atoms) == 3
+    assert mol.atoms[2].element == "B"
+    assert mol.atoms[3].element == "Fe"
+
+    mol.remove_atoms_from((1,3))
+    assert len(mol.atoms) == 1
+    assert mol.atoms[2].element == "B"
+
 def test_molecule_reorder():
     mol = Molecule()
     mol.add_atom(1, element='H')
@@ -46,14 +61,6 @@ def test_molecule_reorder():
 
     mol.reorder()
     assert mol.atoms[3].element == "Fe"
-
-def test_molecule_add_atoms_from():
-    d = ((1, dict(element="H", position=(1, 1, 1))),
-         (2, dict(element="C", position=(2, 2, 2)))
-    )
-
-    mol = Molecule()
-    mol.add_atoms_from(d)
 
 def test_molecule_atoms_iloc():
     mol = Molecule()

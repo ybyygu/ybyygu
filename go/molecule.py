@@ -9,7 +9,7 @@
 #        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  <2017-11-21 Tue 16:00>
-#       UPDATED:  <2017-12-03 Sun 16:30>
+#       UPDATED:  <2017-12-03 Sun 17:50>
 #===============================================================================#
 # 66e4879d-9a1b-4038-925b-ae8b8d838935 ends here
 
@@ -293,6 +293,28 @@ class MolecularEntity(object):
             self._mapping_nodes[index] = atom_id
         self._graph.add_node(atom_id, **atom.data)
 
+    def add_atoms_from(self, atoms):
+        """add multiple atoms.
+
+        Parameters
+        ----------
+        atoms: dict of dict type, key: atom index, value: dict of atom data
+        """
+        assert type(atoms) is dict, atoms
+        assert len(atoms) > 0, atoms
+
+        nodes = {}
+        mapping = self._mapping_nodes
+        for index, d in atoms.items():
+            atom_id = mapping.get(index)
+            atom = Atom(index=index, data=d)
+            print(atom.data)
+            if atom_id is None:
+                atom_id = atom.id
+                mapping[index] = atom_id
+            nodes[atom_id] = atom.data
+        self._graph.add_nodes_from(nodes.items())
+
     def remove_atom(self, index):
         """remove the atom *index* from molecule
 
@@ -308,6 +330,16 @@ class MolecularEntity(object):
         else:
             raise KeyError("index not found: {}".format(index))
 
+    def remove_atoms_from(self, indices):
+        """remove atoms by indices
+
+        Parameters
+        ----------
+        indices: iterable atom indices, 1-based
+        """
+        atom_ids = (self._mapping_nodes[x] for x in indices)
+        self._graph.remove_nodes_from(atom_ids)
+
     def reorder(self):
         """reorder the atoms by renumbering atomic index attributes"""
 
@@ -322,26 +354,6 @@ class MolecularEntity(object):
         # update indices
         self._mapping_nodes.clear()
         self._mapping_nodes.update(new_indices)
-
-    def add_atoms_from(self, atoms):
-        """add multiple atoms.
-
-        Parameters
-        ----------
-        atoms: iterable container of (index, dict) tuples
-        """
-        assert len(atoms) > 0, atoms
-        assert len(atoms[0]) == 2, atoms[0]
-
-    def remove_atoms_from(self, indices):
-        """remove atoms by indices
-
-        Parameters
-        ----------
-        indices: atom index, 1-based
-        """
-        atom_ids = (self._mapping_nodes[x] for x in indices)
-        raise NotImplementedError
 
     def add_bond(self, index1, index2, order=1):
         """Add a bond between two atoms.
