@@ -9,7 +9,7 @@
 #        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  <2017-11-21 Tue 16:00>
-#       UPDATED:  <2017-12-03 Sun 17:50>
+#       UPDATED:  <2017-12-05 Tue 08:54>
 #===============================================================================#
 # 66e4879d-9a1b-4038-925b-ae8b8d838935 ends here
 
@@ -223,7 +223,6 @@ class MolecularEntity(object):
     1. http://goldbook.iupac.org/M03986.html
     2. https://en.wikipedia.org/wiki/Molecular_entity
 
-
     Examples
     --------
     >>> M = Molecule()
@@ -231,13 +230,15 @@ class MolecularEntity(object):
     >>> M.add_atoms_from([...])
     """
 
-    __slots__ = ("_graph", "_atoms", "_mapping_nodes")
+    __slots__ = ("_graph", "_atoms", "_bonds", "_mapping_nodes")
 
     def __init__(self, title="molecular entity", charge=0, multiplicity=1):
         # core structure: networkx Graph
         self._graph = Graph(title=title, charge=charge, multiplicity=multiplicity, indices={})
-        self._atoms = AtomsView(self._graph)
         self._mapping_nodes = self._graph.graph['indices']  # mapping atomic index to atom instance id
+
+        self._atoms = AtomsView(self._graph)
+        self._bonds = BondsView(self._graph)
 
     @property
     def charge(self):
@@ -269,7 +270,7 @@ class MolecularEntity(object):
 
     @property
     def bonds(self):
-        return self._graph.edges()
+        return self._bonds
 
     @property
     def formula(self):
@@ -370,6 +371,24 @@ class MolecularEntity(object):
         n1, n2 = self._mapping_nodes[index1], self._mapping_nodes[index2]
         self._graph.add_edge(n1, n2, order=order)
 
+    def add_bonds_from(self, bonds):
+        """add bonds in molecule
+
+        Parameters
+        ----------
+        bonds: iterable container of bonds
+
+        Example
+        -------
+        >>> mol.add_bonds_from({(1,2):{order=1}, (2,3):{order=2}})
+        """
+        edges = {}
+        for e, d in bonds.items():
+            u, v = e
+            atom_id1, atom_id2 = self._mapping_nodes[u], self._mapping_nodes[v]
+            edges[(atom_id1, atom_id2)] = Bond(atom_id1, atom_id2, d.get('order', 1))
+        self._graph.add_edges_from(edges.items())
+
     def remove_bond(self, index1, index2):
         """remove a bond between two atoms
 
@@ -385,113 +404,22 @@ class MolecularEntity(object):
         n1, n2 = self._mapping_nodes[index1], self._mapping_nodes[index2]
         self._graph.remove_edge(n1, n2)
 
-    def add_bonds_from(self):
-        pass
 
-    def remove_bonds_from(self):
-        pass
+    def remove_bonds_from(self, bonds):
+        """remove all specified bonds
+
+        Parameters
+        ----------
+        bonds: iterable container of bonds (in tuple)
+
+        Example
+        -------
+        >>> mol.remove_bonds_from([(1,2), (2,3)])
+        """
+        for b in bonds:
+            self.remove_bonds(*b)
 # 24dd16f2-0889-454d-8264-cc8838f72318 ends here
 
 # [[file:~/Workspace/Programming/chem-utils/chem-utils.note::c0a96813-be11-47c2-aee4-3d7cd7a39acf][c0a96813-be11-47c2-aee4-3d7cd7a39acf]]
 Molecule = MolecularEntity
 # c0a96813-be11-47c2-aee4-3d7cd7a39acf ends here
-
-# [[file:~/Workspace/Programming/chem-utils/chem-utils.note::f7d75dd8-16e3-47b4-aa7b-70e3ce06f2f1][f7d75dd8-16e3-47b4-aa7b-70e3ce06f2f1]]
-def molecule_from_xyzfile(filename):
-    """a quick and dirty way to create molecule graph from xyz file"""
-
-    ic = itertools.count(start=1)
-    mol = Molecule('origin file: {}'.format(filename))
-    with open(filename) as fp:
-        for line in fp:
-            attrs = line.split()
-            if len(attrs) == 4:
-                symbol, x, y, z = attrs
-                position = [float(a) for a in (x, y, z)]
-                mol.add_atom(index=next(ic), element=symbol, position=position)
-    return mol
-# f7d75dd8-16e3-47b4-aa7b-70e3ce06f2f1 ends here
-
-# [[file:~/Workspace/Programming/chem-utils/chem-utils.note::6b83e92c-fd6c-42a4-8723-13f3b89a54f8][6b83e92c-fd6c-42a4-8723-13f3b89a54f8]]
-import re
-
-mol2_bond_orders = {
-    "1" : 1.0,
-    "2" : 2.0,
-    "3" : 3.0,
-    "ar": 1.5,
-    "du": 0.5,
-    "dm": 2.0,
-    "am": 1.2,
-    "un": 0.0,
-    "nc": 0.0
-}
-
-def graph_from_mol2file(filename, trajectory=False):
-    """a quick and dirty way to store molecular data in networkx graph object
-
-    Parameters
-    ---------
-    filename: the path to a tripos mol2 file
-    trajectory: read all trajectory or not.
-
-    Return
-    ------
-    a networkx graph object or a list of graph objects (trajectory)
-    """
-
-    data_atoms, data_bonds = None, None
-    with open(filename) as fp:
-        line = next(fp)
-        while line and not '@<TRIPOS>MOLECULE' in line:
-            line = next(fp)
-        assert line, "could not find MOLECULE tag"
-
-        ##
-        # get natoms and nbonds
-        # -----------------------------------------------------------------------------
-        # skip one line and get the next line
-        _, line = next(fp), next(fp)
-        natoms, nbonds = line.split()[:2]
-        natoms, nbonds = int(natoms), int(nbonds)
-        print("got {} atoms and {} bonds".format(natoms, nbonds))
-
-        ##
-        # read in atoms
-        # -----------------------------------------------------------------------------
-        while line and not "@<TRIPOS>ATOM" in line:
-            line = next(fp)
-        assert line, "could not find ATOM tag"
-
-        # atom_id element_symbol, x, y, z
-        data_atoms = (next(fp).split()[:5] for _ in range(natoms))
-        # remove any numbers after element symbol: e.g. N39
-        data_atoms = [(int(a), re.split('\d+', sym.capitalize())[0], (float(x), float(y), float(z))) for a, sym, x, y, z in data_atoms]
-
-        ##
-        # read in bonds
-        # -----------------------------------------------------------------------------
-        while line and not "@<TRIPOS>BOND" in line:
-            line = next(fp)
-        assert line, "could not find BOND tag"
-
-        # atom1 atom2 bond_order
-        data_bonds = (next(fp).split()[1:] for _ in range(nbonds))
-        data_bonds = [(int(a1), int(a2), mol2_bond_orders[bo.lower()]) for a1, a2, bo in data_bonds]
-
-    assert data_atoms, "no atoms data found!"
-    assert data_bonds, "no bonds data found!"
-
-    G = Graph()
-    ##
-    # store atom attributes in graph nodes
-    # -----------------------------------------------------------------------------
-    # map symbol and position
-    nodes = ((atom_id, {'element':symbol,
-                        "position":position}) for atom_id, symbol, position in data_atoms)
-    # map bond order
-    edges = ((atom_id1, atom_id2, {'weight': float(bo)}) for atom_id1, atom_id2, bo in data_bonds)
-    G.add_nodes_from(nodes)
-    G.add_edges_from(edges)
-    return G
-# 6b83e92c-fd6c-42a4-8723-13f3b89a54f8 ends here
