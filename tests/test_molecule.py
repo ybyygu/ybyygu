@@ -1,5 +1,6 @@
 # [[file:~/Workspace/Programming/chem-utils/chem-utils.note::f79546aa-456d-406d-9378-9e3223b608b4][f79546aa-456d-406d-9378-9e3223b608b4]]
 from go import Molecule
+from go import BondOrder
 
 def test_molecule_attributes():
     mol = Molecule()
@@ -72,4 +73,32 @@ def test_molecule_atoms_iloc():
     assert mol.atoms.iloc[-1].element == "Fe"
     atoms = mol.atoms.iloc[:-1]
     assert atoms[-1].element == "B"
+
+def test_molecule_add_bond():
+    mol = Molecule('test')
+    elements = ("H", "C", "C", "H")
+    for i, e in enumerate(elements):
+        mol.add_atom(i+1, element=e)
+    mol.add_bond(1, 2)
+    mol.add_bond(3, 4, 2.0)
+
+    b = mol.bonds[(1,2)]
+    assert len(mol.bonds) == 2
+    assert b.order == BondOrder.single
+    b = mol.bonds[(3,4)]
+    assert b.order == BondOrder.double
+
+def test_molecule_add_bonds():
+    mol = Molecule('test')
+    elements = ("H", "C", "C", "H")
+    for i, e in enumerate(elements):
+        mol.add_atom(i+1, element=e)
+
+    d = {
+        (1, 2): dict(order=1),
+        (3, 4): dict(order=2)
+    }
+    mol.add_bonds_from(d)
+    assert len(mol.bonds) == 2
+    assert mol.bonds[(4, 3)].order == BondOrder.double
 # f79546aa-456d-406d-9378-9e3223b608b4 ends here

@@ -9,7 +9,7 @@
 #        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  <2017-11-21 Tue 16:00>
-#       UPDATED:  <2017-12-05 Tue 08:54>
+#       UPDATED:  <2017-12-07 Thu 09:32>
 #===============================================================================#
 # 66e4879d-9a1b-4038-925b-ae8b8d838935 ends here
 
@@ -21,6 +21,7 @@ from functools import lru_cache  # required python >= 3.2
 
 from .lib import graph
 from .atom import Atom
+from .bond import Bond, BondOrder
 
 Graph = graph.OrderedGraph
 # 3c5dcd20-6b5f-45f8-b7f0-a90acd3d9024 ends here
@@ -380,14 +381,14 @@ class MolecularEntity(object):
 
         Example
         -------
-        >>> mol.add_bonds_from({(1,2):{order=1}, (2,3):{order=2}})
+        >>> mol.add_bonds_from({(1,2): dict(order=1), (2,3): dict(order=2)})
         """
-        edges = {}
+        edges = []
         for e, d in bonds.items():
             u, v = e
             atom_id1, atom_id2 = self._mapping_nodes[u], self._mapping_nodes[v]
-            edges[(atom_id1, atom_id2)] = Bond(atom_id1, atom_id2, d.get('order', 1))
-        self._graph.add_edges_from(edges.items())
+            edges.append((atom_id1, atom_id2, d))
+        self._graph.add_edges_from(edges)
 
     def remove_bond(self, index1, index2):
         """remove a bond between two atoms
