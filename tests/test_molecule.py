@@ -21,6 +21,9 @@ def test_molecule_add_atom():
     assert mol.atoms[2].position.x == 1
     assert mol.atoms[1].index == 1
 
+    assert 1 in mol.atoms
+    assert 2 in mol.atoms
+
     # update atom attributes
     mol.add_atom(1, element='Fe')
     assert len(mol.atoms) == 2
@@ -81,6 +84,10 @@ def test_molecule_add_bond():
         mol.add_atom(i+1, element=e)
     mol.add_bond(1, 2)
     mol.add_bond(3, 4, 2.0)
+
+    assert (1, 2) in mol.bonds
+    assert (2, 1) in mol.bonds
+    assert (3, 4) in mol.bonds
 
     b = mol.bonds[(1,2)]
     assert len(mol.bonds) == 2

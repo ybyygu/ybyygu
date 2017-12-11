@@ -9,7 +9,7 @@
 #        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  <2017-11-21 Tue 16:00>
-#       UPDATED:  <2017-12-07 Thu 09:32>
+#       UPDATED:  <2017-12-11 Mon 18:14>
 #===============================================================================#
 # 66e4879d-9a1b-4038-925b-ae8b8d838935 ends here
 
@@ -157,6 +157,10 @@ class AtomsView(KeysView):
 
     def __iter__(self):
         yield from (self[k] for k in self._mapping_nodes)
+
+    def __contains__(self, key):
+        atom_id = self._mapping_nodes[key]
+        return atom_id in self._mapping
 
     def __getitem__(self, n):
         atom_id = self._mapping_nodes[n]
