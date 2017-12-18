@@ -9,7 +9,7 @@
 #        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  <2017-12-14 Thu 10:19>
-#       UPDATED:  <2017-12-17 Sun 16:53>
+#       UPDATED:  <2017-12-18 Mon 21:36>
 #===============================================================================#
 # 66e4879d-9a1b-4038-925b-ae8b8d838935 ends here
 
@@ -59,6 +59,26 @@ def from_coordfile(filename):
             mol.add_atom(index=next(ic), element=sym, position=(float(x), float(y), float(z)))
         return mol
 # f7d75dd8-16e3-47b4-aa7b-70e3ce06f2f1 ends here
+
+# [[file:~/Workspace/Programming/chem-utils/chem-utils.note::73dd00a9-558c-4e7a-afcd-650436927f84][73dd00a9-558c-4e7a-afcd-650436927f84]]
+def to_xyzfile(molecule, filename):
+    """write molecule in .xyz file
+
+    Parameter
+    ---------
+    filename: path to a .xyz file
+    """
+    lines = ["{}".format(len(molecule.atoms))]
+    lines.append(molecule.title)
+    for a in molecule.atoms:
+        lines.append("{:5}{:15.9f}{:15.9f}{:15.9f}".format(a.element.symbol,
+                                                           a.position.x,
+                                                           a.position.y,
+                                                           a.position.z))
+    print(lines)
+    with open(filename, "w") as fp:
+        fp.write("\n".join(lines))
+# 73dd00a9-558c-4e7a-afcd-650436927f84 ends here
 
 # [[file:~/Workspace/Programming/chem-utils/chem-utils.note::6b83e92c-fd6c-42a4-8723-13f3b89a54f8][6b83e92c-fd6c-42a4-8723-13f3b89a54f8]]
 mol2_bond_orders = {
@@ -140,3 +160,93 @@ def from_mol2file(filename, trajectory=False):
     mol.add_bonds_from(bonds)
     return mol
 # 6b83e92c-fd6c-42a4-8723-13f3b89a54f8 ends here
+
+# [[file:~/Workspace/Programming/chem-utils/chem-utils.note::37b0a595-5412-4584-b655-ffbe24c12531][37b0a595-5412-4584-b655-ffbe24c12531]]
+rev_mol2_bond_orders = {
+      "1.0": "1",
+      "2.0": "2",
+      "3.0": "3",
+      "1.5": "ar",
+      "0.5": "wk",
+      "1.2": "am",
+      "0.0": "nc"
+  }
+
+def to_mol2file(molecule, filename):
+    """write molecule in .mol2 file format
+
+    Parameters
+    ----------
+    molecule: instance of Molecule class
+    filename: the path to output file name
+    """
+
+    lines = []
+    # molecule title section
+    lines.append("@<TRIPOS>MOLECULE")
+    lines.append("generated from networkx graph object")
+    # atom count, bond numbers, substructure numbers
+    natoms = len(molecule.atoms)
+    nbonds = len(molecule.bonds)
+
+    lines.append("{} {}".format(natoms, nbonds))
+    # molecule type
+    lines.append("SMALL")
+    # customed charges
+    lines.append("NO_CHARGES\n")
+
+    # output atoms
+    lines.append("@<TRIPOS>ATOM")
+    width = len(str(natoms))
+    for a in molecule.atoms:
+        symbol = a.element.symbol
+        x, y, z = a.position
+        xyz = "{:-12.6f}{:-12.6f}{:-12.6f}".format(x, y, z)
+        line = "{:{width}} {:4} {:36} {:8}".format(a.index,
+                                                   symbol,
+                                                   xyz,
+                                                   symbol,
+                                                   width=width)
+        lines.append(line)
+
+    # output bonds
+    width = len(str(nbonds))
+    if nbonds > 0:
+        lines.append("@<TRIPOS>BOND")
+        ic = itertools.count(start=1)
+        for b in molecule.bonds:
+            n1, n2 = b.atom1.index, b.atom2.index
+            bo = b.order.value
+            k = "{:.1f}".format(bo)
+            mol2bo = rev_mol2_bond_orders.get(k, 1.0)
+            line = "{:{width}} {:{width}} {:{width}} {}".format(next(ic),
+                                                                n1,
+                                                                n2,
+                                                                mol2bo,
+                                                                width=width)
+            lines.append(line)
+
+    ##
+    # write text file
+    # -----------------------------------------------------------------------------
+    with open(filename, "w") as fp:
+        fp.write("\n".join(lines))
+# 37b0a595-5412-4584-b655-ffbe24c12531 ends here
+
+# [[file:~/Workspace/Programming/chem-utils/chem-utils.note::ac2ab7dd-fc19-4ca7-bc87-690345ef8e19][ac2ab7dd-fc19-4ca7-bc87-690345ef8e19]]
+def to_car(molecule, filename):
+    """write molecule as Accelrys/MSI Biosym/Insight II CAR format"""
+
+    lines = ['!BIOSYM archive 3', 'PBC=OFF\n']
+    lines.append('!xxxx')
+    for a in molecule.atoms:
+        symbol = a.element.symbol
+        x, y, z = a.position
+        line = "{:5}{:15.9f}{:15.9f}{:15.9f}{:21}{:4}{:-5.3f}".format(symbol, x, y, z, ' ', symbol, 0)
+        lines.append(line)
+    lines.append('end')
+    lines.append('end')
+
+    with open(filename, 'w') as fp:
+        fp.write("\n".join(lines))
+# ac2ab7dd-fc19-4ca7-bc87-690345ef8e19 ends here

@@ -105,6 +105,7 @@ def test_molecule_add_bonds():
         (1, 2): dict(order=1),
         (3, 4): dict(order=2)
     }
+
     mol.add_bonds_from(d)
     assert len(mol.bonds) == 2
     b34 = mol.bonds[(3, 4)]
