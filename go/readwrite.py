@@ -9,30 +9,55 @@
 #        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  <2017-12-14 Thu 10:19>
-#       UPDATED:  <2017-12-15 Fri 14:40>
+#       UPDATED:  <2017-12-17 Sun 16:53>
 #===============================================================================#
 # 66e4879d-9a1b-4038-925b-ae8b8d838935 ends here
 
 # [[file:~/Workspace/Programming/chem-utils/chem-utils.note::54026ccd-add6-46eb-be92-7494d4ab742a][54026ccd-add6-46eb-be92-7494d4ab742a]]
+import itertools
+import re
+
 from .molecule import Molecule
 
-__all__ = ["from_xyzfile", "from_mol2file", "to_xyzfile", "to_mol2file"]
+__all__ = ["from_xyzfile", "from_coordfile", "from_mol2file", "to_xyzfile", "to_mol2file"]
 # 54026ccd-add6-46eb-be92-7494d4ab742a ends here
 
 # [[file:~/Workspace/Programming/chem-utils/chem-utils.note::f7d75dd8-16e3-47b4-aa7b-70e3ce06f2f1][f7d75dd8-16e3-47b4-aa7b-70e3ce06f2f1]]
 def from_xyzfile(filename):
-    """a quick and dirty way to create molecule graph from xyz file"""
+    """a quick and dirty way to create a molecule from xyz file
 
-    ic = itertools.count(start=1)
-    mol = Molecule('origin file: {}'.format(filename))
+    Parameter
+    ---------
+    filename: path to a xyz file
+
+    Reference
+    ---------
+    https://en.wikipedia.org/wiki/XYZ_file_format
+    """
+
     with open(filename) as fp:
+        # line = '' or line = '\n'
+        line = fp.readline().strip()
+        assert line, line
+        na = int(line)
+        title = fp.readline().strip()
+        ic = itertools.count(start=1)
+        mol = Molecule(title)
+        for _ in range(na):
+            line = fp.readline()
+            sym, x, y, z = line.split()
+            mol.add_atom(index=next(ic), element=sym, position=(float(x), float(y), float(z)))
+        return mol
+
+def from_coordfile(filename):
+    """create a molecule from plain coordinates file"""
+    with open(filename) as fp:
+        mol = Molecule("from {}".format(filename))
+        ic = itertools.count(start=1)
         for line in fp:
-            attrs = line.split()
-            if len(attrs) == 4:
-                symbol, x, y, z = attrs
-                position = [float(a) for a in (x, y, z)]
-                mol.add_atom(index=next(ic), element=symbol, position=position)
-    return mol
+            sym, x, y, z = line.split()[:4]
+            mol.add_atom(index=next(ic), element=sym, position=(float(x), float(y), float(z)))
+        return mol
 # f7d75dd8-16e3-47b4-aa7b-70e3ce06f2f1 ends here
 
 # [[file:~/Workspace/Programming/chem-utils/chem-utils.note::6b83e92c-fd6c-42a4-8723-13f3b89a54f8][6b83e92c-fd6c-42a4-8723-13f3b89a54f8]]
@@ -75,7 +100,7 @@ def from_mol2file(filename, trajectory=False):
         _, line = next(fp), next(fp)
         natoms, nbonds = line.split()[:2]
         natoms, nbonds = int(natoms), int(nbonds)
-        print("got {} atoms and {} bonds".format(natoms, nbonds))
+        # print("got {} atoms and {} bonds".format(natoms, nbonds))
 
         ##
         # read in atoms
