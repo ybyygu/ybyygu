@@ -89,8 +89,8 @@ def test_molecule_add_bond():
     assert (2, 1) in mol.bonds
     assert (3, 4) in mol.bonds
 
-    b = mol.bonds[(1,2)]
     assert len(mol.bonds) == 2
+    b = mol.bonds[(1,2)]
     assert b.order == BondOrder.single
     b = mol.bonds[(3,4)]
     assert b.order == BondOrder.double
@@ -107,5 +107,17 @@ def test_molecule_add_bonds():
     }
     mol.add_bonds_from(d)
     assert len(mol.bonds) == 2
-    assert mol.bonds[(4, 3)].order == BondOrder.double
+    b34 = mol.bonds[(3, 4)]
+    b43 = mol.bonds[(4, 3)]
+    assert b34 == b43
+    assert b34.order == BondOrder.double
+    assert b43.order == BondOrder.double
+    assert b34.atom1.element.symbol == "C"
+    assert b43.atom1.element.symbol == "H"
+
+    for b in mol.bonds:
+        assert b.order == BondOrder.single
+        assert b.atom1.element.symbol == "H"
+        assert b.atom2.element.symbol == "C"
+        break
 # f79546aa-456d-406d-9378-9e3223b608b4 ends here

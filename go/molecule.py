@@ -9,7 +9,7 @@
 #        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  <2017-11-21 Tue 16:00>
-#       UPDATED:  <2017-12-11 Mon 18:14>
+#       UPDATED:  <2017-12-18 Mon 20:56>
 #===============================================================================#
 # 66e4879d-9a1b-4038-925b-ae8b8d838935 ends here
 
@@ -188,20 +188,28 @@ class BondsView(KeysView):
     >>> len(bonds)
     """
 
-    __slots__ = ("_mapping", "_mapping_nodes")
+    __slots__ = ("_mapping", "_mapping_nodes", "_graph")
 
     def __init__(self, graph):
         self._mapping = graph.edges
         self._mapping_nodes = graph.graph['indices']  # mapping index ==> atom.id
+        self._graph = graph
 
     def __iter__(self):
-        yield from (self[e] for e in self._mapping)
+        G = self._graph
+        def _get_bonds():
+            for u, v in self._mapping:
+                atom1, atom2 = Atom(data=G.nodes[u]), Atom(data=G.nodes[v])
+                bond_order = G.edges[(u, v)].get('order', 1)
+                yield Bond(atom1, atom2, order=bond_order)
+        yield from _get_bonds()
 
     def __getitem__(self, e):
         u, v = e
         atom_id1, atom_id2 = self._mapping_nodes[u], self._mapping_nodes[v]
         d = self._mapping[(atom_id1, atom_id2)]
-        bond = Bond(atom_id1, atom_id2, order=d.get('order', 1))
+        atom1, atom2 = Atom(data=self._graph.nodes[atom_id1]), Atom(data=self._graph.nodes[atom_id2])
+        bond = Bond(atom1, atom2, order=d.get('order', 1))
         return bond
 
     def __contains__(self, e):
