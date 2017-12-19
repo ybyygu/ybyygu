@@ -9,7 +9,7 @@
 #        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  <2017-12-14 Thu 10:19>
-#       UPDATED:  <2017-12-18 Mon 21:36>
+#       UPDATED:  <2017-12-19 Tue 20:44>
 #===============================================================================#
 # 66e4879d-9a1b-4038-925b-ae8b8d838935 ends here
 
@@ -203,7 +203,7 @@ def to_mol2file(molecule, filename):
         x, y, z = a.position
         xyz = "{:-12.6f}{:-12.6f}{:-12.6f}".format(x, y, z)
         line = "{:{width}} {:4} {:36} {:8}".format(a.index,
-                                                   symbol,
+                                                   a.name,
                                                    xyz,
                                                    symbol,
                                                    width=width)
