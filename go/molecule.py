@@ -9,7 +9,7 @@
 #        AUTHOR:  Wenping Guo <ybyygu@gmail.com>
 #       LICENCE:  GPL version 2 or upper
 #       CREATED:  <2017-11-21 Tue 16:00>
-#       UPDATED:  <2017-12-18 Mon 20:56>
+#       UPDATED:  <2017-12-29 Fri 10:15>
 #===============================================================================#
 # 66e4879d-9a1b-4038-925b-ae8b8d838935 ends here
 
@@ -22,6 +22,8 @@ from functools import lru_cache  # required python >= 3.2
 from .lib import graph
 from .atom import Atom
 from .bond import Bond, BondOrder
+
+__all__ = ['Molecule']
 
 Graph = graph.OrderedGraph
 # 3c5dcd20-6b5f-45f8-b7f0-a90acd3d9024 ends here

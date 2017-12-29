@@ -3,12 +3,15 @@
 from enum import Enum
 from collections import namedtuple
 
+from . import toplevel
 from .atom import Atom
 
 __all__ = ("BondOrder", "Bond")
 
+@toplevel
 class BondOrder(Enum):
     """https://en.wikipedia.org/wiki/Bond_order"""
+
     disconnected =  0.0
     partial      =  0.5
     single       =  1.0
@@ -32,6 +35,7 @@ class _Bond(namedtuple("Bond", "atom1 atom2 order".split())):
         return False
 
 # make simple thing simple
+@toplevel
 def Bond(atom1, atom2, order=BondOrder.single):
     return _Bond(atom1, atom2, BondOrder(order))
 # f48ba944-02bd-4ac0-bc39-6713aa91f65f ends here

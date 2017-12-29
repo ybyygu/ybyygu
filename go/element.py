@@ -2,6 +2,9 @@
 # [[file:~/Workspace/Programming/chem-utils/chem-utils.note::f1974825-5d2d-42d2-8af8-cdecc4134c89][f1974825-5d2d-42d2-8af8-cdecc4134c89]]
 from enum import Enum
 
+from . import toplevel
+
+@toplevel
 class Element(Enum):
     """
     Basic immutable element object with relevant properties.

@@ -2,12 +2,14 @@
 # [[file:~/Workspace/Programming/chem-utils/chem-utils.note::58ad1935-58aa-46b6-ab3c-823302d97b32][58ad1935-58aa-46b6-ab3c-823302d97b32]]
 from collections import namedtuple
 
+from . import toplevel
 from .element import Element
 
 _bohr2ang = 0.529177
 
 Point3D = namedtuple("Point3D", ("x", "y", "z"))
 
+@toplevel
 def Coord(x, y, z, unit="au"):
     """a convenient wrapper for unit conversion"""
 
@@ -20,7 +22,7 @@ def Coord(x, y, z, unit="au"):
     # always store in angstrom
     return Point3D(x, y, z)
 
-
+@toplevel
 class Atom(object):
     """repsents a single atom
 
