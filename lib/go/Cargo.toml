@@ -1,0 +1,9 @@
+# [[file:~/Workspace/Programming/chem-utils/chem-utils.note::3bed171f-a5c3-45be-a1f0-75e182daf61e][3bed171f-a5c3-45be-a1f0-75e182daf61e]]
+[package]
+name = "go"
+version = "0.1.0"
+authors = ["Wenping Guo <ybyygu@gmail.com>"]
+
+[dependencies]
+cgmath = "*"
+# 3bed171f-a5c3-45be-a1f0-75e182daf61e ends here
