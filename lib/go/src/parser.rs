@@ -1,10 +1,4 @@
 // [[file:~/Workspace/Programming/chem-utils/chem-utils.note::85054519-f2d5-4c63-994a-78bbe4f9a30f][85054519-f2d5-4c63-994a-78bbe4f9a30f]]
-#[macro_use]
-extern crate nom;
-
-#[macro_use]
-extern crate timeit;
-
 use std::fmt::Debug;
 use nom::IResult;
 use nom::{alphanumeric, multispace, float_s, double_s, is_digit, digit, crlf, line_ending};
