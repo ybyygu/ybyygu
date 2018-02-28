@@ -8,4 +8,5 @@ authors = ["Wenping Guo <ybyygu@gmail.com>"]
 cgmath = "*"
 nom = "*"
 timeit = "*"
+indextree = "*"
 # 3bed171f-a5c3-45be-a1f0-75e182daf61e ends here

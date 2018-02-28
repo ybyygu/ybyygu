@@ -4,6 +4,7 @@ extern crate cgmath;
 extern crate nom;
 #[macro_use]
 extern crate timeit;
+extern crate indextree;
 
 mod neighbors;
 mod parser;

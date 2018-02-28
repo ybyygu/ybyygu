@@ -55,3 +55,71 @@ fn test_cgmath() {
     get_neighbors(&positions, positions[0]);
 }
 // cd993c57-2284-473c-b6cd-2edbe095530b ends here
+
+// [[file:~/Workspace/Programming/chem-utils/chem-utils.note::2d2b9c1f-4f35-4939-9410-31d3a7213b21][2d2b9c1f-4f35-4939-9410-31d3a7213b21]]
+static query_radius: f64 = 3.0;
+static query_radius2: f64 = 9.0;
+
+struct Octant {
+    center: [f64; 3],
+    extent: f64,
+}
+
+struct Query {
+    center : [f64; 3],
+    radius : f64,
+    r2     : f64,
+}
+
+impl Query {
+    fn new(r: f64) -> Self {
+        Query {
+            center : [0.0; 3],
+            radius : r,
+            r2     : r*r,
+        }
+    }
+
+    /// test if there is overlapping between query ball and the octant
+    fn is_overlap(&self, octant: &Octant) -> bool {
+        false
+    }
+
+    /// test if if the octant is completely contained by the query ball
+    fn is_contains(&self, octant: &Octant) -> bool {
+        false
+    }
+}
+
+impl Octant {
+    fn new() -> Self {
+        Octant {
+            center: [0.0; 3],
+            extent: 2.5,
+        }
+    }
+}
+
+
+#[test]
+fn test_overlap() {
+    let octant = Octant::new();
+    let query = Query::new(2.5);
+    query.is_overlap(&octant);
+}
+
+// #[test]
+// fn test_indextree() {
+//     use indextree::Arena;
+//     // Create a new arena
+//     let arena = &mut Arena::new();
+
+//     // Add some new nodes to the arena
+//     let a = arena.new_node(Octant{extent: 1.0});
+//     let b = arena.new_node(Octant{extent: 2.0});
+
+//     // Append b to a
+//     a.append(b, arena);
+//     assert_eq!(b.ancestors(arena).into_iter().count(), 2);
+// }
+// 2d2b9c1f-4f35-4939-9410-31d3a7213b21 ends here
