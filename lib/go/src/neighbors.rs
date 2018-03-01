@@ -56,19 +56,32 @@ fn test_cgmath() {
 }
 // cd993c57-2284-473c-b6cd-2edbe095530b ends here
 
-// [[file:~/Workspace/Programming/chem-utils/chem-utils.note::2d2b9c1f-4f35-4939-9410-31d3a7213b21][2d2b9c1f-4f35-4939-9410-31d3a7213b21]]
-static query_radius: f64 = 3.0;
-static query_radius2: f64 = 9.0;
+// [[file:~/Workspace/Programming/chem-utils/chem-utils.note::96cefae3-a99f-4f6b-823f-2f89f98824fa][96cefae3-a99f-4f6b-823f-2f89f98824fa]]
 
+// 96cefae3-a99f-4f6b-823f-2f89f98824fa ends here
+
+// [[file:~/Workspace/Programming/chem-utils/chem-utils.note::2d2b9c1f-4f35-4939-9410-31d3a7213b21][2d2b9c1f-4f35-4939-9410-31d3a7213b21]]
+#[derive(Debug)]
 struct Octant {
     center: [f64; 3],
     extent: f64,
+    ipoints: Vec<usize>,         // indices of the points in a public array
 }
 
+impl Octant {
+    fn new(extent: f64) -> Self {
+        Octant {
+            center: [0.0; 3],
+            extent: extent,
+            ipoints: vec![],
+        }
+    }
+}
+
+#[derive(Debug)]
 struct Query {
     center : [f64; 3],
     radius : f64,
-    r2     : f64,
 }
 
 impl Query {
@@ -76,36 +89,77 @@ impl Query {
         Query {
             center : [0.0; 3],
             radius : r,
-            r2     : r*r,
         }
     }
 
     /// test if there is overlapping between query ball and the octant
     fn is_overlap(&self, octant: &Octant) -> bool {
-        false
+        let x = (self.center[0] - octant.center[0]).abs();
+        let y = (self.center[1] - octant.center[1]).abs();
+        let z = (self.center[2] - octant.center[2]).abs();
+
+        let extent = octant.extent;
+        let max_dist = extent + self.radius;
+
+        // case 1: > e+r
+        if (x > max_dist || y > max_dist || z > max_dist) {
+            // println!("{:?}", "case 1");
+            return false;
+        }
+
+        // case 2: < e
+        if (x < extent || y < extent || z < extent) {
+            // println!("{:?}", "case 2");
+            return true;
+        }
+
+        // case 3: between e and e+r
+        let nx = x - extent;
+        let ny = y - extent;
+        let nz = z - extent;
+
+        assert!(nx > 0., nx);
+        assert!(ny > 0., ny);
+        assert!(nz > 0., nz);
+
+        // println!("d = {:?}", nx*nx+ny*ny+nz*nz);
+        nx*nx + ny*ny + nz*nz < self.radius*self.radius
     }
 
     /// test if if the octant is completely contained by the query ball
     fn is_contains(&self, octant: &Octant) -> bool {
-        false
+        let extent = octant.extent;
+        let x = (self.center[0] - octant.center[0]).abs() + extent;
+        let y = (self.center[1] - octant.center[1]).abs() + extent;
+        let z = (self.center[2] - octant.center[2]).abs() + extent;
+
+        x*x + y*y + z*z < self.radius*self.radius
     }
 }
+// 2d2b9c1f-4f35-4939-9410-31d3a7213b21 ends here
 
-impl Octant {
-    fn new() -> Self {
-        Octant {
-            center: [0.0; 3],
-            extent: 2.5,
-        }
-    }
-}
-
-
+// [[file:~/Workspace/Programming/chem-utils/chem-utils.note::81167b8a-bac9-4a8e-a6c9-56e48dcd6e79][81167b8a-bac9-4a8e-a6c9-56e48dcd6e79]]
 #[test]
 fn test_overlap() {
-    let octant = Octant::new();
-    let query = Query::new(2.5);
-    query.is_overlap(&octant);
+    let octant = Octant::new(2.5);
+    let mut query = Query::new(0.4);
+    query.center = [2.7, 2.7, 2.7];
+    assert!(query.is_overlap(&octant));
+    query.center = [2.7, -2.7, -2.7];
+    assert!(query.is_overlap(&octant));
+    query.center = [2.8, 2.8, 2.8];
+    assert!(!query.is_overlap(&octant));
+}
+
+#[test]
+fn test_contains() {
+    let octant = Octant::new(2.5);
+    let mut query = Query::new(1.4);
+    assert!(!query.is_contains(&octant));
+
+    query.radius = 4.4;         // 2.5*sqrt(3)
+    let x = query.is_contains(&octant);
+    assert!(query.is_contains(&octant));
 }
 
 // #[test]
@@ -122,4 +176,4 @@ fn test_overlap() {
 //     a.append(b, arena);
 //     assert_eq!(b.ancestors(arena).into_iter().count(), 2);
 // }
-// 2d2b9c1f-4f35-4939-9410-31d3a7213b21 ends here
+// 81167b8a-bac9-4a8e-a6c9-56e48dcd6e79 ends here
