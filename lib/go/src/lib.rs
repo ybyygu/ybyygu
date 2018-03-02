@@ -6,6 +6,9 @@ extern crate nom;
 extern crate timeit;
 extern crate indextree;
 
+#[macro_use]
+extern crate approx;
+
 mod neighbors;
 mod parser;
 mod atom;
