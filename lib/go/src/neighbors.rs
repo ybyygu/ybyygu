@@ -270,6 +270,158 @@ fn test_octree_init() {
 }
 // 96cefae3-a99f-4f6b-823f-2f89f98824fa ends here
 
+// [[file:~/Workspace/Programming/chem-utils/chem-utils.note::9db18239-7b01-48a3-aedc-7bcc082e7949][9db18239-7b01-48a3-aedc-7bcc082e7949]]
+// octant: octree node
+// points: points in 3D space for reference
+fn octree_create_octant(octant: &Octant, points: &Vec<[f64; 3]>) -> Vec<Octant> {
+    let extent = octant.extent / 2.;
+
+    let mut cells = vec![];
+
+    // initialize 8 child octants
+    for i in 0..8 {
+        let mut o = Octant::new(extent);
+        let factors = get_octant_cell_factor(i);
+        for j in 0..3 {
+            o.center[j] += 0.5*extent*factors[j] + octant.center[j]
+        }
+        cells.push(o);
+    }
+
+    if octant.ipoints.len() > 1 {
+        let (x0, y0, z0) = (octant.center[0], octant.center[1], octant.center[2]);
+        // 1. scan xyz
+        for &i in octant.ipoints.iter() {
+            let p = points[i];
+            let (x, y, z) = (p[0] - x0, p[1] - y0, p[2] - z0);
+            let index = get_octant_cell_index(x, y, z);
+            cells[index].ipoints.push(i);
+        }
+    }
+
+    //
+    println!("{:?}", octant);
+    let mut octant = Octant::new(extent);
+    for (i, ref cell) in cells.iter().enumerate() {
+        println!("{:?}", (i, cell));
+    }
+
+    cells
+}
+
+// zyx: +++ => 0
+// zyx: ++- => 1
+// zyx: --- => 7
+fn get_octant_cell_index(x: f64, y: f64, z: f64) -> usize {
+    let bits = [z.is_sign_negative(), y.is_sign_negative(), x.is_sign_negative()];
+    bits.iter().fold(0, |acc, &b| acc*2 + b as usize)
+}
+
+#[test]
+fn test_octree_cell_index() {
+    let index = get_octant_cell_index(1.0, 1.0, 1.0);
+    assert_eq!(index, 0);
+
+    let index = get_octant_cell_index(-1.0, -1.0, -1.0);
+    assert_eq!(index, 7);
+
+    let index = get_octant_cell_index(-1.0, 1.0, 1.0);
+    assert_eq!(index, 1);
+
+    let index = get_octant_cell_index(-1.0, -1.0, 1.0);
+    assert_eq!(index, 3);
+}
+
+// useful for calculate center of child octant
+fn get_octant_cell_factor(index: usize) -> [f64; 3] {
+    debug_assert!(index < 8 && index >= 0);
+    [
+        match (index & 0b001) == 0 {
+            true => 1.0,
+            false => -1.0,
+        },
+        match ((index & 0b010) >> 1) == 0 {
+            true => 1.0,
+            false => -1.0,
+        },
+        match ((index & 0b100) >> 2) == 0 {
+            true => 1.0,
+            false => -1.0,
+        }
+    ]
+}
+
+#[test]
+fn test_octree_factor() {
+    let x = get_octant_cell_factor(0);
+    assert_eq!(1.0, x[0]);
+    assert_eq!(1.0, x[1]);
+    assert_eq!(1.0, x[2]);
+
+    let x = get_octant_cell_factor(7);
+    assert_eq!(-1.0, x[0]);
+    assert_eq!(-1.0, x[1]);
+    assert_eq!(-1.0, x[2]);
+
+    let x = get_octant_cell_factor(2);
+    assert_eq!(1.0, x[0]);
+    assert_eq!(-1.0, x[1]);
+    assert_eq!(1.0, x[2]);
+}
+
+#[test]
+fn test_octree() {
+    // use indextree::Arena;
+
+    // // Create a new arena
+    // let arena = &mut Arena::new();
+
+    // // Add some new nodes to the arena
+    // let a = arena.new_node(Octant::new(1.));
+    // let b = arena.new_node(Octant::new(2.));
+
+    // // Append b to a
+    // a.append(b, arena);
+    // assert_eq!(b.ancestors(arena).into_iter().count(), 2);
+
+    let txt = " N                  0.49180679   -7.01280337   -3.37298245
+ H                  1.49136679   -7.04246937   -3.37298245
+ C                 -0.19514721   -5.73699137   -3.37298245
+ H                 -0.81998021   -5.66018837   -4.26280545
+ C                 -1.08177021   -5.59086937   -2.14084145
+ C                  0.79533179   -4.58138037   -3.37298245
+ H                 -0.46899721   -5.65651737   -1.24178645
+ H                 -1.58492621   -4.62430837   -2.16719845
+ H                 -1.82600521   -6.38719137   -2.13160945
+ O                  2.03225779   -4.81286537   -3.37298245
+ H                  0.43991988   -3.57213195   -3.37298245
+ H                 -0.03366507   -7.86361434   -3.37298245 ";
+
+    let points = get_positions_from_xyz_stream(&txt).unwrap();
+    let octant = octant_from_points(&points);
+    let children = octree_create_octant(&octant, &points);
+    let child = &children[0];
+    let x = child.center[0] - octant.center[0];
+    let y = child.center[1] - octant.center[1];
+    let z = child.center[2] - octant.center[2];
+    assert_relative_eq!(x, y, epsilon=1e-4);
+    assert_relative_eq!(x, z, epsilon=1e-4);
+
+    assert_eq!(octant.extent, child.extent * 2.0);
+    assert_eq!(x, child.extent * 0.5);
+
+    let child = &children[1];
+    let x = child.center[0] - octant.center[0];
+    let y = child.center[1] - octant.center[1];
+    let z = child.center[2] - octant.center[2];
+    assert_relative_eq!(x, child.extent * -0.5, epsilon=1e-4);
+    assert_relative_eq!(y, child.extent * 0.5, epsilon=1e-4);
+    assert_relative_eq!(z, child.extent * 0.5, epsilon=1e-4);
+
+    assert!(children[7].ipoints.contains(&2));
+}
+// 9db18239-7b01-48a3-aedc-7bcc082e7949 ends here
+
 // [[file:~/Workspace/Programming/chem-utils/chem-utils.note::81167b8a-bac9-4a8e-a6c9-56e48dcd6e79][81167b8a-bac9-4a8e-a6c9-56e48dcd6e79]]
 #[test]
 fn test_overlap() {
@@ -293,19 +445,4 @@ fn test_contains() {
     let x = query.is_contains(&octant);
     assert!(query.is_contains(&octant));
 }
-
-// #[test]
-// fn test_indextree() {
-//     use indextree::Arena;
-//     // Create a new arena
-//     let arena = &mut Arena::new();
-
-//     // Add some new nodes to the arena
-//     let a = arena.new_node(Octant{extent: 1.0});
-//     let b = arena.new_node(Octant{extent: 2.0});
-
-//     // Append b to a
-//     a.append(b, arena);
-//     assert_eq!(b.ancestors(arena).into_iter().count(), 2);
-// }
 // 81167b8a-bac9-4a8e-a6c9-56e48dcd6e79 ends here
