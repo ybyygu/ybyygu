@@ -14,4 +14,5 @@ mod parser;
 mod atom;
 mod bond;
 mod molecule;
+mod morton;
 // 68b8f3aa-b3f8-43c0-8b4d-c3165b146535 ends here

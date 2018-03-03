@@ -127,7 +127,7 @@ fn test_cgmath() {
 // cd993c57-2284-473c-b6cd-2edbe095530b ends here
 
 // [[file:~/Workspace/Programming/chem-utils/chem-utils.note::2d2b9c1f-4f35-4939-9410-31d3a7213b21][2d2b9c1f-4f35-4939-9410-31d3a7213b21]]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Octant {
     center: [f64; 3],
     extent: f64,
@@ -271,9 +271,40 @@ fn test_octree_init() {
 // 96cefae3-a99f-4f6b-823f-2f89f98824fa ends here
 
 // [[file:~/Workspace/Programming/chem-utils/chem-utils.note::9db18239-7b01-48a3-aedc-7bcc082e7949][9db18239-7b01-48a3-aedc-7bcc082e7949]]
+use indextree::Arena;
+
 // octant: octree node
 // points: points in 3D space for reference
-fn octree_create_octant(octant: &Octant, points: &Vec<[f64; 3]>) -> Vec<Octant> {
+fn octree_create_octants(octant: &Octant, points: &Vec<[f64; 3]>) {
+    // Create a new arena
+    let arena = &mut Arena::new();
+
+    // a: parent octant
+    let a = arena.new_node(octant.clone());
+
+    if octant.ipoints.len() > 1 {
+        let mut parent = a;
+        let mut current = octant;
+        loop {
+            // add child octants to the parent octant
+            for o in octree_create_child_octants(current, points) {
+                let b = arena.new_node(o);
+                parent.append(b, arena);
+            }
+
+            for x in parent.children(arena) {
+                println!("{:?}", x);
+            }
+            break;
+        }
+    }
+
+    println!("{:?}", arena);
+}
+
+// octant: octree node
+// points: points in 3D space for reference
+fn octree_create_child_octants(octant: &Octant, points: &Vec<[f64; 3]>) -> Vec<Octant> {
     let extent = octant.extent / 2.;
 
     let mut cells = vec![];
@@ -299,8 +330,6 @@ fn octree_create_octant(octant: &Octant, points: &Vec<[f64; 3]>) -> Vec<Octant> 
         }
     }
 
-    //
-    println!("{:?}", octant);
     let mut octant = Octant::new(extent);
     for (i, ref cell) in cells.iter().enumerate() {
         println!("{:?}", (i, cell));
@@ -371,19 +400,6 @@ fn test_octree_factor() {
 
 #[test]
 fn test_octree() {
-    // use indextree::Arena;
-
-    // // Create a new arena
-    // let arena = &mut Arena::new();
-
-    // // Add some new nodes to the arena
-    // let a = arena.new_node(Octant::new(1.));
-    // let b = arena.new_node(Octant::new(2.));
-
-    // // Append b to a
-    // a.append(b, arena);
-    // assert_eq!(b.ancestors(arena).into_iter().count(), 2);
-
     let txt = " N                  0.49180679   -7.01280337   -3.37298245
  H                  1.49136679   -7.04246937   -3.37298245
  C                 -0.19514721   -5.73699137   -3.37298245
@@ -399,7 +415,7 @@ fn test_octree() {
 
     let points = get_positions_from_xyz_stream(&txt).unwrap();
     let octant = octant_from_points(&points);
-    let children = octree_create_octant(&octant, &points);
+    let children = octree_create_child_octants(&octant, &points);
     let child = &children[0];
     let x = child.center[0] - octant.center[0];
     let y = child.center[1] - octant.center[1];
@@ -419,6 +435,8 @@ fn test_octree() {
     assert_relative_eq!(z, child.extent * 0.5, epsilon=1e-4);
 
     assert!(children[7].ipoints.contains(&2));
+
+    octree_create_octants(&octant, &points);
 }
 // 9db18239-7b01-48a3-aedc-7bcc082e7949 ends here
 
