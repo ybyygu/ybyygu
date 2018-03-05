@@ -79,16 +79,13 @@ fn test_linear() {
     let xyzfile = "/home/ybyygu/Workspace/Programming/chem-utils/data/51/226f67-055e-42a6-a88d-771f78d7d48e/pdb4rhv.xyz";
     let positions = get_positions_from_xyzfile(xyzfile).unwrap();
 
+    let p = positions[0];
     timeit!({
-        for &p in positions.iter() {
-            get_neighbors_naive(&positions, p, 3.0);
-        }
+        get_neighbors_naive(&positions, p, 3.0);
     });
 
     timeit!({
-        for &p in positions.iter() {
-            get_neighbors_smart(&positions, p, 3.0);
-        }
+        get_neighbors_smart(&positions, p, 3.0);
     });
 }
 // cd993c57-2284-473c-b6cd-2edbe095530b ends here
