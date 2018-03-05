@@ -256,7 +256,9 @@ pub fn morton3D_encode(x: u32, y: u32, z: u32) -> u64 {
 
     answer
 }
+// 8989e538-1a4a-4b10-baab-acd4e4e3784f ends here
 
+// [[file:~/Workspace/Programming/chem-utils/chem-utils.note::cd2a05c3-f2f4-488e-8605-1d2b7ac8bcd3][cd2a05c3-f2f4-488e-8605-1d2b7ac8bcd3]]
 #[test]
 fn test_morton() {
     let p = (901, 12, 21);
@@ -264,4 +266,4 @@ fn test_morton() {
     let coord = morton3D_decode(m);
     assert_eq!(coord, p);
 }
-// 8989e538-1a4a-4b10-baab-acd4e4e3784f ends here
+// cd2a05c3-f2f4-488e-8605-1d2b7ac8bcd3 ends here
