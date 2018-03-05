@@ -132,6 +132,7 @@ struct Octant {
     center: [f64; 3],
     extent: f64,
     ipoints: Vec<usize>,         // indices of the points in a public array
+    is_leaf: bool,
 }
 
 impl Octant {
@@ -140,6 +141,7 @@ impl Octant {
             center: [0.0; 3],
             extent: extent,
             ipoints: vec![],
+            is_leaf: true,
         }
     }
 }
@@ -159,7 +161,7 @@ impl Query {
     }
 
     /// test if there is overlapping between query ball and the octant
-    fn is_overlap(&self, octant: &Octant) -> bool {
+    fn overlaps(&self, octant: &Octant) -> bool {
         let x = (self.center[0] - octant.center[0]).abs();
         let y = (self.center[1] - octant.center[1]).abs();
         let z = (self.center[2] - octant.center[2]).abs();
@@ -193,7 +195,7 @@ impl Query {
     }
 
     /// test if if the octant is completely contained by the query ball
-    fn is_contains(&self, octant: &Octant) -> bool {
+    fn contains(&self, octant: &Octant) -> bool {
         let extent = octant.extent;
         let x = (self.center[0] - octant.center[0]).abs() + extent;
         let y = (self.center[1] - octant.center[1]).abs() + extent;
@@ -206,26 +208,26 @@ impl Query {
 
 // [[file:~/Workspace/Programming/chem-utils/chem-utils.note::81167b8a-bac9-4a8e-a6c9-56e48dcd6e79][81167b8a-bac9-4a8e-a6c9-56e48dcd6e79]]
 #[test]
-fn test_overlap() {
+fn test_octree_overlap() {
     let octant = Octant::new(2.5);
     let mut query = Query::new(0.4);
     query.center = [2.7, 2.7, 2.7];
-    assert!(query.is_overlap(&octant));
+    assert!(query.overlaps(&octant));
     query.center = [2.7, -2.7, -2.7];
-    assert!(query.is_overlap(&octant));
+    assert!(query.overlaps(&octant));
     query.center = [2.8, 2.8, 2.8];
-    assert!(!query.is_overlap(&octant));
+    assert!(!query.overlaps(&octant));
 }
 
 #[test]
-fn test_contains() {
+fn test_octree_contains() {
     let octant = Octant::new(2.5);
     let mut query = Query::new(1.4);
-    assert!(!query.is_contains(&octant));
+    assert!(!query.contains(&octant));
 
     query.radius = 4.4;         // 2.5*sqrt(3)
-    let x = query.is_contains(&octant);
-    assert!(query.is_contains(&octant));
+    let x = query.contains(&octant);
+    assert!(query.contains(&octant));
 }
 // 81167b8a-bac9-4a8e-a6c9-56e48dcd6e79 ends here
 
@@ -298,12 +300,12 @@ fn test_octree_init() {
 // 85a1bbdb-53b6-4dff-89e2-1ceba40b3c02 ends here
 
 // [[file:~/Workspace/Programming/chem-utils/chem-utils.note::9db18239-7b01-48a3-aedc-7bcc082e7949][9db18239-7b01-48a3-aedc-7bcc082e7949]]
-use indextree::Arena;
+use indextree::{Arena, NodeId};
 use std::collections::HashMap;
 
-/// octant: octree node data
+/// root: root octant for octree
 /// points: reference points in 3D space
-fn octree_create(octant: Octant, points: &Vec<[f64; 3]>) -> Result<Arena<Octant>, Box<Error>>{
+fn octree_create(octant: Octant, points: &Vec<[f64; 3]>) -> Result<(Arena<Octant>, NodeId), Box<Error>>{
     let bucket_size = 1;
     let min_extent = 1.0;
     let max_depth = 9;
@@ -311,7 +313,8 @@ fn octree_create(octant: Octant, points: &Vec<[f64; 3]>) -> Result<Arena<Octant>
 
     // 0. create octree from root octant
     let mut octree = Arena::new();
-    let mut parent_node = octree.new_node(octant.clone());
+    let root = octree.new_node(octant.clone());
+    let mut parent_node = root;
     if npoints > bucket_size {
         let mut depth = 0;
         let mut need_split = vec![parent_node];
@@ -320,8 +323,9 @@ fn octree_create(octant: Octant, points: &Vec<[f64; 3]>) -> Result<Arena<Octant>
             let mut remained = HashMap::new(); // remained data need to be processed in step 2.
             for &parent_node in need_split.iter() {
                 // println!("step1: {:?}", parent_node);
-                let parent_octant = &octree[parent_node].data;
+                let parent_octant = &mut octree[parent_node].data;
                 let child_octants = octree_create_child_octants(&parent_octant, &points);
+                parent_octant.is_leaf = false;
                 remained.insert(parent_node, child_octants);
             }
 
@@ -360,7 +364,7 @@ fn octree_create(octant: Octant, points: &Vec<[f64; 3]>) -> Result<Arena<Octant>
         // it is ok to have points between 1 and bucket_size
     }
 
-    Ok(octree)
+    Ok((octree, root))
 }
 
 /// octant: octree node data
@@ -368,9 +372,10 @@ fn octree_create(octant: Octant, points: &Vec<[f64; 3]>) -> Result<Arena<Octant>
 fn octree_create_child_octants(octant: &Octant, points: &Vec<[f64; 3]>) -> Vec<Octant> {
     let extent = octant.extent / 2.;
 
-    let mut cells = vec![];
+    let mut octants = vec![];
 
     // initialize 8 child octants
+    // 1. update center
     for i in 0..8 {
         let mut o = Octant::new(extent);
         let factors = get_octant_cell_factor(i);
@@ -378,9 +383,10 @@ fn octree_create_child_octants(octant: &Octant, points: &Vec<[f64; 3]>) -> Vec<O
         for j in 0..3 {
             o.center[j] += 0.5*extent*factors[j] + octant.center[j]
         }
-        cells.push(o);
+        octants.push(o);
     }
 
+    // 2. update point indices
     if octant.ipoints.len() > 1 {
         let (x0, y0, z0) = (octant.center[0], octant.center[1], octant.center[2]);
         // 1. scan xyz
@@ -388,11 +394,11 @@ fn octree_create_child_octants(octant: &Octant, points: &Vec<[f64; 3]>) -> Vec<O
             let p = points[i];
             let (x, y, z) = (p[0] - x0, p[1] - y0, p[2] - z0);
             let index = get_octant_cell_index(x, y, z);
-            cells[index].ipoints.push(i);
+            octants[index].ipoints.push(i);
         }
     }
 
-    cells
+    octants
 }
 
 // zyx: +++ => 0
@@ -458,7 +464,7 @@ fn test_octree_factor() {
 }
 
 #[test]
-fn test_octree() {
+fn test_octree_build() {
     let txt = " N                  0.49180679   -7.01280337   -3.37298245
  H                  1.49136679   -7.04246937   -3.37298245
  C                 -0.19514721   -5.73699137   -3.37298245
@@ -494,7 +500,100 @@ fn test_octree() {
     assert_relative_eq!(z, child.extent * 0.5, epsilon=1e-4);
 
     assert!(children[7].ipoints.contains(&2));
-
-    let octree = octree_create(octant, &points);
 }
 // ea2c2276-5aaa-406e-9d5f-11a258f38cc0 ends here
+
+// [[file:~/Workspace/Programming/chem-utils/chem-utils.note::bbcfff81-6ec6-4e9e-a787-8641691e6435][bbcfff81-6ec6-4e9e-a787-8641691e6435]]
+fn octree_radius_neighbors(octree: &Arena<Octant>,
+                             root: NodeId,
+                             query: &Query,
+                             points: &Vec<[f64; 3]>) -> Vec<usize>
+  {
+      let mut neighbors: Vec<usize> = vec![];
+
+      let mut remained = vec![root];
+      'outer: loop {
+          let mut todo = vec![];
+          for &parent in remained.iter() {
+              let octant = &octree[parent].data;
+              // case 1: partial overlap
+              if query.overlaps(&octant) {
+                  if ! query.contains(&octant) {
+                      // case 1.1: partial overlap
+                      println!("case 1.1: {:?}", octant);
+                      if octant.is_leaf {
+                          neighbors.extend(octant.ipoints.iter());
+                      } else {
+                          todo.extend(parent.children(octree));
+                      }
+                  } else {
+                      // case 1.2: completely contains
+                      // keep all points in octant
+                      println!("case 1.2: {:?}", octant);
+                      neighbors.extend(octant.ipoints.iter());
+                  }
+              } else {
+                  // case 2: no overlap
+                  // ignore points in octant
+                  println!("case 3: {:?}", octant);
+              }
+          }
+          // 2.
+          remained.clear();
+          remained.extend(todo.iter());
+
+          if remained.is_empty() {
+              break;
+          }
+      }
+
+      neighbors
+  }
+
+/// Return
+/// ------
+/// indices of neighboring points
+  fn neighbors(points: &Vec<[f64; 3]>, query: &Query) -> Vec<usize> {
+      let octant = octant_from_points(&points);
+      let (octree, root) = octree_create(octant, &points).unwrap();
+      let pts_maybe = octree_radius_neighbors(&octree, root, &query, &points);
+      let (qx, qy, qz) = (query.center[0], query.center[1], query.center[2]);
+      let rsqr = query.radius*query.radius;
+
+      let mut remained = vec![];
+      for &i in pts_maybe.iter() {
+          let (px, py, pz) = (points[i][0], points[i][1], points[i][2]);
+          let dsqr = (px-qx)*(px-qx) + (py-qy)*(py-qy) + (pz-qz)*(pz-qz);
+          if dsqr < rsqr {
+              println!("{:?} = {:?}", i, dsqr.sqrt());
+              remained.push(i);
+          }
+      }
+
+      remained
+  }
+// bbcfff81-6ec6-4e9e-a787-8641691e6435 ends here
+
+// [[file:~/Workspace/Programming/chem-utils/chem-utils.note::9317478e-996f-4323-9310-e1ca841b8832][9317478e-996f-4323-9310-e1ca841b8832]]
+#[test]
+fn test_octree() {
+    let txt = " N                  0.49180679   -7.01280337   -3.37298245
+ H                  1.49136679   -7.04246937   -3.37298245
+ C                 -0.19514721   -5.73699137   -3.37298245
+ H                 -0.81998021   -5.66018837   -4.26280545
+ C                 -1.08177021   -5.59086937   -2.14084145
+ C                  0.79533179   -4.58138037   -3.37298245
+ H                 -0.46899721   -5.65651737   -1.24178645
+ H                 -1.58492621   -4.62430837   -2.16719845
+ H                 -1.82600521   -6.38719137   -2.13160945
+ O                  2.03225779   -4.81286537   -3.37298245
+ H                  0.43991988   -3.57213195   -3.37298245
+ H                 -0.03366507   -7.86361434   -3.37298245 ";
+
+    let points = get_positions_from_xyz_stream(&txt).unwrap();
+    let mut query = Query::new(1.0);
+    query.center = points[0];
+    let x = neighbors(&points, &query);
+    println!("{:?}", x);
+}
+// 9317478e-996f-4323-9310-e1ca841b8832 ends here
