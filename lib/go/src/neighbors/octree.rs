@@ -23,7 +23,6 @@ struct Octant {
     center: [f64; 3],
     extent: f64,
     ipoints: Vec<usize>,     // indices of the points in a public array
-    is_leaf: bool,           // FIXME: could be removed
 }
 
 impl Octant {
@@ -35,7 +34,6 @@ impl Octant {
             center: [0.0; 3],
             extent: extent,
             ipoints: vec![],
-            is_leaf: true,
         }
     }
 
@@ -364,7 +362,6 @@ fn octree_create(octant: Octant, points: &Vec<[f64; 3]>) -> Result<(Arena<Octant
                 // println!("step1: {:?}", parent_node);
                 let parent_octant = &mut octree[parent_node].data;
                 let child_octants = octree_create_child_octants(&parent_octant, &points);
-                parent_octant.is_leaf = false;
                 remained.insert(parent_node, child_octants);
             }
 
@@ -560,7 +557,7 @@ fn octree_radius_neighbors(octree: &Arena<Octant>,
                 if ! query.contains(&octant) {
                     // case 1.1: partial overlap
                     println!("case 1.1: {:?}", octant);
-                    if octant.is_leaf {
+                    if octant.children.is_empty() {
                         neighbors.extend(octant.ipoints.iter());
                     } else {
                         todo.extend(parent.children(octree));
