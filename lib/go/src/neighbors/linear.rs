@@ -80,12 +80,11 @@ fn test_linear() {
     let positions = get_positions_from_xyzfile(xyzfile).unwrap();
 
     let p = positions[0];
-    timeit!({
-        get_neighbors_naive(&positions, p, 3.0);
-    });
 
     timeit!({
-        get_neighbors_smart(&positions, p, 3.0);
+        for &p in positions.iter() {
+            get_neighbors_naive(&positions, p, 3.0);
+        }
     });
 }
 // cd993c57-2284-473c-b6cd-2edbe095530b ends here
