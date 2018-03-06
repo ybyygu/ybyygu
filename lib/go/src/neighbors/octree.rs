@@ -17,20 +17,20 @@ struct OctantId (usize);
 struct Octant {
     // tree attributes
     parent: Option<OctantId>,
-    children: Option<OctantId>,
+    children: Vec<OctantId>,
 
     /// The actual data which will be stored within the tree
     center: [f64; 3],
     extent: f64,
     ipoints: Vec<usize>,     // indices of the points in a public array
-    is_leaf: bool,           // FIXME: should be removed
+    is_leaf: bool,           // FIXME: could be removed
 }
 
 impl Octant {
     fn new(extent: f64) -> Self {
         Octant {
             parent: None,
-            children: None,
+            children: Vec::new(),
 
             center: [0.0; 3],
             extent: extent,
@@ -38,25 +38,93 @@ impl Octant {
             is_leaf: true,
         }
     }
+
+    /// initialize octant struct from point cloud
+    fn from_points(points: &Vec<[f64; 3]>) -> Self {
+        let mut p_min = points[0];
+        let mut p_max = points[0];
+
+        for p in points {
+            if p[0] > p_max[0] {
+                p_max[0] = p[0];
+            } else if p[0] < p_min[0] {
+                p_min[0] = p[0];
+            }
+
+            if p[1] > p_max[1] {
+                p_max[1] = p[1];
+            } else if p[1] < p_min[1] {
+                p_min[1] = p[1];
+            }
+
+            if p[2] > p_max[2] {
+                p_max[2] = p[2];
+            } else if p[2] < p_min[2] {
+                p_min[2] = p[2];
+            }
+        }
+
+        let mut pe = [p_max[0] - p_min[0], p_max[1] - p_min[1], p_max[2] - p_min[2]];
+        let mut extent = 0.;
+        for &v in pe.iter() {
+            if v > extent {
+                extent = v;
+            }
+        }
+
+        let mut octant = Octant::new(extent/2.);
+        octant.center = [(p_max[0] + p_min[0])/2., (p_max[1] + p_min[1])/2., (p_max[2] + p_min[2])/2.,];
+
+        let n = points.len();
+        octant.ipoints = (0..n).collect();
+
+        octant
+    }
 }
 // d602663f-9f66-4e18-a538-e60b12985df3 ends here
+
+// [[file:~/Workspace/Programming/chem-utils/chem-utils.note::85a1bbdb-53b6-4dff-89e2-1ceba40b3c02][85a1bbdb-53b6-4dff-89e2-1ceba40b3c02]]
+#[test]
+fn test_octree_init() {
+    let txt = " N                  0.49180679   -7.01280337   -3.37298245
+ H                  1.49136679   -7.04246937   -3.37298245
+ C                 -0.19514721   -5.73699137   -3.37298245
+ H                 -0.81998021   -5.66018837   -4.26280545
+ C                 -1.08177021   -5.59086937   -2.14084145
+ C                  0.79533179   -4.58138037   -3.37298245
+ H                 -0.46899721   -5.65651737   -1.24178645
+ H                 -1.58492621   -4.62430837   -2.16719845
+ H                 -1.82600521   -6.38719137   -2.13160945
+ O                  2.03225779   -4.81286537   -3.37298245
+ H                  0.43991988   -3.57213195   -3.37298245
+ H                 -0.03366507   -7.86361434   -3.37298245 ";
+
+    let points = get_positions_from_xyz_stream(&txt).unwrap();
+    let octant = Octant::from_points(&points);
+    assert_relative_eq!(octant.center[0], 0.103126, epsilon=1e-4);
+    assert_relative_eq!(octant.center[1], -5.717873145, epsilon=1e-4);
+    assert_relative_eq!(octant.center[2], -2.75229595, epsilon=1e-4);
+    assert_relative_eq!(octant.extent, 2.145741195, epsilon=1e-4);
+}
+// 85a1bbdb-53b6-4dff-89e2-1ceba40b3c02 ends here
 
 // [[file:~/Workspace/Programming/chem-utils/chem-utils.note::15e377a2-f1f4-483a-a91b-5ddf7f335cb0][15e377a2-f1f4-483a-a91b-5ddf7f335cb0]]
 use std::ops::{Index, IndexMut};
 
+#[derive(Clone, Debug)]
 pub struct Octree {
-    bucket_size: usize,         // parameter
-    min_extent: f64,            // paramter
+    pub bucket_size: usize,         // adjustable parameter
+    pub min_extent: f64,            // adjustable paramter
 
-    points: Vec<[f64; 3]>,      // reference points in 3D space
-    octants: Vec<Octant>,       // private octants
+    points: Vec<[f64; 3]>,          // reference points in 3D space
+    octants: Vec<Octant>,           // private octants
     root: Option<OctantId>,
 }
 
 impl Octree {
     /// initialize octree from points in 3D space
     pub fn new(points: Vec<[f64; 3]>) -> Self {
-        let octant = octant_from_points(&points);
+        let octant = Octant::from_points(&points);
         let mut arena = Arena::new();
         let root = arena.new_node(octant);
 
@@ -74,21 +142,27 @@ impl Octree {
         ;
     }
 
-    /// private method: create a new node from octant
+    ///
     fn new_node(&mut self, octant: Octant) -> OctantId {
         let next_index = self.octants.len();
-
         self.octants.push(octant);
 
         OctantId(next_index)
     }
 
-    /// Append a new child octant to this node, after existing children.
-    fn append(&mut self, parent_node: OctantId, mut octant: Octant) {
-        octant.parent = Some(parent_node);
-        self.octants.push(octant);
-    }
+    /// Append a new child octant to parent node
+    fn append_child(&mut self, parent_node: OctantId, mut octant: Octant) -> OctantId {
+        let n = self.new_node(octant);
 
+        // 1. get parent octant, update children attributes
+        let parent_octant = &mut self[parent_node];
+        parent_octant.children.push(n);
+
+        // 2. update child octant
+        octant.parent = Some(parent_node);
+
+        n
+    }
 
     /// Count octants in octree.
     pub fn count(&self) -> usize {
@@ -104,7 +178,7 @@ impl Octree {
     // ------
     // indices of neighboring points
     // pub fn neighbors(&self, query: &Query) -> Vec<usize> {
-    //     let octant = octant_from_points(&points);
+    //     let octant = Octant::from_points(&points);
     //     let (octree, root) = octree_create(octant, &points).unwrap();
     //     let pts_maybe = octree_radius_neighbors(&octree, root, &query, &points);
     //     let (qx, qy, qz) = (query.center[0], query.center[1], query.center[2]);
@@ -227,7 +301,7 @@ fn test_octree_contains() {
 
 // [[file:~/Workspace/Programming/chem-utils/chem-utils.note::9317478e-996f-4323-9310-e1ca841b8832][9317478e-996f-4323-9310-e1ca841b8832]]
 #[test]
-fn test_octree() {
+fn test_octree_struct() {
     let txt = " N                  0.49180679   -7.01280337   -3.37298245
  H                  1.49136679   -7.04246937   -3.37298245
  C                 -0.19514721   -5.73699137   -3.37298245
@@ -244,78 +318,28 @@ fn test_octree() {
     let points = get_positions_from_xyz_stream(&txt).unwrap();
     let mut query = Query::new(1.0);
     query.center = points[0];
-    // let x = neighbors(&points, &query);
-    // println!("{:?}", x);
+    let mut octree = Octree::new(points);
+
+    let octant = Octant::new(2.0);
+    let root = octree.new_node(octant);
+    let octant = Octant::new(1.2);
+    let child1 = octree.append_child(root, octant);
+    let octant = Octant::new(1.2);
+    let child2 = octree.append_child(root, octant);
+    let octant = Octant::new(1.3);
+    let child3 = octree.append_child(child1, octant);
+
+    let root_octant = &octree[root];
+    assert!(root_octant.children.contains(&child1));
+    assert!(root_octant.children.contains(&child2));
+    assert_eq!(octree.count(), 4);
+    assert_eq!(root_octant.extent, 2.0);
+
+    let octant1 = &octree[child1];
+    assert_eq!(octant1.extent, 1.2);
+    assert!(octant1.children.contains(&child3));
 }
 // 9317478e-996f-4323-9310-e1ca841b8832 ends here
-
-// [[file:~/Workspace/Programming/chem-utils/chem-utils.note::96cefae3-a99f-4f6b-823f-2f89f98824fa][96cefae3-a99f-4f6b-823f-2f89f98824fa]]
-fn octant_from_points(points: &Vec<[f64; 3]>) -> Octant {
-    let mut p_min = points[0];
-    let mut p_max = points[0];
-
-    for p in points {
-        if p[0] > p_max[0] {
-            p_max[0] = p[0];
-        } else if p[0] < p_min[0] {
-            p_min[0] = p[0];
-        }
-
-        if p[1] > p_max[1] {
-            p_max[1] = p[1];
-        } else if p[1] < p_min[1] {
-            p_min[1] = p[1];
-        }
-
-        if p[2] > p_max[2] {
-            p_max[2] = p[2];
-        } else if p[2] < p_min[2] {
-            p_min[2] = p[2];
-        }
-    }
-
-    let mut pe = [p_max[0] - p_min[0], p_max[1] - p_min[1], p_max[2] - p_min[2]];
-    let mut extent = 0.;
-    for &v in pe.iter() {
-        if v > extent {
-            extent = v;
-        }
-    }
-
-    let mut octant = Octant::new(extent/2.);
-    octant.center = [(p_max[0] + p_min[0])/2., (p_max[1] + p_min[1])/2., (p_max[2] + p_min[2])/2.,];
-
-    let n = points.len();
-    octant.ipoints = (0..n).collect();
-
-    octant
-}
-// 96cefae3-a99f-4f6b-823f-2f89f98824fa ends here
-
-// [[file:~/Workspace/Programming/chem-utils/chem-utils.note::85a1bbdb-53b6-4dff-89e2-1ceba40b3c02][85a1bbdb-53b6-4dff-89e2-1ceba40b3c02]]
-#[test]
-fn test_octree_init() {
-    let txt = " N                  0.49180679   -7.01280337   -3.37298245
- H                  1.49136679   -7.04246937   -3.37298245
- C                 -0.19514721   -5.73699137   -3.37298245
- H                 -0.81998021   -5.66018837   -4.26280545
- C                 -1.08177021   -5.59086937   -2.14084145
- C                  0.79533179   -4.58138037   -3.37298245
- H                 -0.46899721   -5.65651737   -1.24178645
- H                 -1.58492621   -4.62430837   -2.16719845
- H                 -1.82600521   -6.38719137   -2.13160945
- O                  2.03225779   -4.81286537   -3.37298245
- H                  0.43991988   -3.57213195   -3.37298245
- H                 -0.03366507   -7.86361434   -3.37298245 ";
-
-    let points = get_positions_from_xyz_stream(&txt).unwrap();
-    let octant = octant_from_points(&points);
-    assert_relative_eq!(octant.center[0], 0.103126, epsilon=1e-4);
-    assert_relative_eq!(octant.center[1], -5.717873145, epsilon=1e-4);
-    assert_relative_eq!(octant.center[2], -2.75229595, epsilon=1e-4);
-    assert_relative_eq!(octant.extent, 2.145741195, epsilon=1e-4);
-}
-// 85a1bbdb-53b6-4dff-89e2-1ceba40b3c02 ends here
 
 // [[file:~/Workspace/Programming/chem-utils/chem-utils.note::9db18239-7b01-48a3-aedc-7bcc082e7949][9db18239-7b01-48a3-aedc-7bcc082e7949]]
 /// root: root octant for octree
@@ -494,7 +518,7 @@ fn test_octree_build() {
  H                 -0.03366507   -7.86361434   -3.37298245 ";
 
     let points = get_positions_from_xyz_stream(&txt).unwrap();
-    let octant = octant_from_points(&points);
+    let octant = Octant::from_points(&points);
     let children = octree_create_child_octants(&octant, &points);
     let child = &children[0];
     let x = child.center[0] - octant.center[0];
