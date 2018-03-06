@@ -2,8 +2,6 @@
 use std::error::Error;
 use std::collections::HashMap;
 
-use indextree::{Arena, NodeId};
-
 use neighbors::get_positions_from_xyz_stream;
 use neighbors::get_positions_from_xyzfile;
 // 7711fb40-175f-4198-bff1-71c5fe1d7bd3 ends here

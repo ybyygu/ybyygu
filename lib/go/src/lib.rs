@@ -4,7 +4,6 @@ extern crate cgmath;
 extern crate nom;
 #[macro_use]
 extern crate timeit;
-extern crate indextree;
 
 #[macro_use]
 extern crate approx;
