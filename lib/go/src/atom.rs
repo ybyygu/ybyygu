@@ -1,4 +1,4 @@
-// [[file:~/Workspace/Programming/chem-utils/chem-utils.note::97aedb7c-dd99-4150-a90a-57f2e536dc78][97aedb7c-dd99-4150-a90a-57f2e536dc78]]
+// [[file:~/Workspace/Programming/chem-utils/chem-utils.note::0f172e71-d282-472f-9e19-186376ba6eeb][0f172e71-d282-472f-9e19-186376ba6eeb]]
 use std::fmt::{self, Debug, Display};
 
 static ElementArray: [&'static str; 118] = [
@@ -404,4 +404,4 @@ fn test_element() {
     println!("symbol = {:}", x.symbol());
     println!("number = {:}", x.number());
 }
-// 97aedb7c-dd99-4150-a90a-57f2e536dc78 ends here
+// 0f172e71-d282-472f-9e19-186376ba6eeb ends here

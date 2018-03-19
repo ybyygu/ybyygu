@@ -5,7 +5,6 @@ use std::io::prelude::*;
 use std::fs::File;
 
 pub mod linear;
-pub mod octree;
 // c5c19023-7070-46f7-97e3-09f955c9c21a ends here
 
 // [[file:~/Workspace/Programming/chem-utils/chem-utils.note::34ebf4ed-5677-4f45-bb0c-4d8fb22bc514][34ebf4ed-5677-4f45-bb0c-4d8fb22bc514]]
